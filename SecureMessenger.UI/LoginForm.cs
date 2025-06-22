@@ -28,17 +28,9 @@ namespace SecureMessenger.UI
                 return;
             }
 
-            var storedUser = UserStore.GetUserByUsername(username);
-            if (storedUser == null)
-            {
-                MessageBox.Show("Invalid username or password.", "Login Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
             try
             {
-                // The authService.Login method will verify the password and attempt to decrypt the private key
-                byte[] decryptedPrivateKey = _authService.Login(password, storedUser);
+                byte[] decryptedPrivateKey = _authService.Login(username, password);
 
                 if (decryptedPrivateKey != null)
                 {
@@ -47,10 +39,11 @@ namespace SecureMessenger.UI
                     LoggedInUsername = username;
 
                     // In a real app, you would securely store the decryptedPrivateKey for the session.
-                    Array.Clear(decryptedPrivateKey, 0, decryptedPrivateKey.Length); // Clear it for this example.
+                    Array.Clear(decryptedPrivateKey, 0, decryptedPrivateKey.Length);
 
-                    this.DialogResult = DialogResult.OK; // Signal to close this form and open the main one
-                    this.Close();
+                    // --- THESE ARE THE CRITICAL LINES ---
+                    this.DialogResult = DialogResult.OK; // Signal success to Program.cs
+                    this.Close();                        // Close the login form
                 }
                 else
                 {

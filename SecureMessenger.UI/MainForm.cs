@@ -1,3 +1,4 @@
+using SecureMessenger.Core.Services;
 using System;
 using System.Windows.Forms;
 
@@ -7,27 +8,49 @@ namespace SecureMessenger.UI
     {
         private string _loggedInUsername;
 
+        private readonly UserDataService _userDataService;
+
         public MainForm(string loggedInUsername)
         {
             InitializeComponent();
             _loggedInUsername = loggedInUsername;
+            // Initialize the service here
+            _userDataService = new UserDataService();
         }
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-            // This event runs when the form is first loaded
             this.Text = $"Secure Messenger - {_loggedInUsername}";
             lblStatus.Text = $"Logged in as: {_loggedInUsername}";
 
-            // For now, let's just add the current user to the list.
-            // Later, this would be populated with all registered users.
-            lstUsers.Items.Add(_loggedInUsername);
-            foreach (var user in UserStore.Users)
+            // --- NEW LOGIC TO POPULATE THE USER LIST ---
+            PopulateUserList();
+        }
+
+        private void PopulateUserList()
+        {
+            // Clear any existing items from the list box
+            lstUsers.Items.Clear();
+
+            try
             {
-                if (user.Username != _loggedInUsername && !lstUsers.Items.Contains(user.Username))
+                // Call our new method to get all usernames from the database
+                List<string> allUsernames = _userDataService.GetAllUsernames();
+
+                // Loop through the list of usernames
+                foreach (string username in allUsernames)
                 {
-                    lstUsers.Items.Add(user.Username);
+                    // We don't want to show the logged-in user in the list of people to chat with
+                    if (username != _loggedInUsername)
+                    {
+                        lstUsers.Items.Add(username);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                // If there's an error connecting to the DB or fetching users, show an error message
+                MessageBox.Show($"Failed to load user list: {ex.Message}", "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

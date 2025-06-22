@@ -12,4 +12,10 @@
     <ProjectReference Include="..\SecureMessenger.Core\SecureMessenger.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="MessengerDatabase.mdf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

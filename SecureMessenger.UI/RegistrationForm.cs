@@ -36,23 +36,23 @@ namespace SecureMessenger.UI
                 return;
             }
 
-            if (UserStore.GetUserByUsername(username) != null)
-            {
-                MessageBox.Show("This username is already taken. Please choose another one.", "Username Taken", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
             // 3. If validation passes, register the user
             try
             {
-                var newUser = _authService.RegisterUser(username, password);
-                UserStore.AddUser(newUser); // Add the newly registered user to our temporary store
+                // The AuthService now handles the check for existing users.
+                bool success = _authService.RegisterUser(username, password);
 
-                MessageBox.Show($"User '{username}' registered successfully! You can now log in.", "Registration Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                // This will close the form and return an OK result to whoever opened it.
-                this.DialogResult = DialogResult.OK;
-                this.Close();
+                if (success)
+                {
+                    MessageBox.Show($"User '{username}' registered successfully! You can now log in.", "Registration Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    this.DialogResult = DialogResult.OK;
+                    this.Close();
+                }
+                else
+                {
+                    MessageBox.Show("This username is already taken. Please choose another one.", "Username Taken", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    this.DialogResult = DialogResult.None;
+                }
             }
             catch (Exception ex)
             {
