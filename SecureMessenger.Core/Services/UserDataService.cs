@@ -7,21 +7,20 @@ namespace SecureMessenger.Core.Services
 {
     public class UserDataService
     {
-        // This is the connection string for your LocalDB file.
-        // Note the |DataDirectory|, which is a special placeholder for your app's running directory.
-        // ADD THIS NEW FIELD (it's not readonly anymore)
         private string _connectionString;
 
-        // ADD THIS CONSTRUCTOR
         public UserDataService()
         {
-            // Get the absolute path to the directory where your .exe is running (e.g., the bin\Debug\net8.0-windows folder)
+            // This finds the path to your running .exe (e.g., in the bin\Debug\net8.0-windows folder)
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
 
-            // Combine that path with your database file name to get the full path
-            string dbFilePath = System.IO.Path.Combine(baseDirectory, "MessengerDatabase.mdf");
+            // This goes up three levels to find your SecureMessenger.UI project folder
+            string projectRoot = Path.GetFullPath(Path.Combine(baseDirectory, @"..\..\.."));
 
-            // Build the new connection string using the full, explicit path
+            // This combines the project path with your database file name
+            string dbFilePath = Path.Combine(projectRoot, "MessengerDatabase.mdf");
+
+            // Build the new connection string. Notice we have REMOVED "User Instance=true".
             _connectionString = $@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename={dbFilePath};Integrated Security=True;Connect Timeout=30";
         }
 

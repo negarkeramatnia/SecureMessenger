@@ -3,14 +3,24 @@ using SecureMessenger.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
+using System.IO;
 
 namespace SecureMessenger.Core.Services
 {
     public class MessageDataService
     {
-        // Note: This connection string is identical to the one in UserDataService.
-        // In a larger application, you'd store this in a single configuration file.
-        private readonly string _connectionString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=|DataDirectory|\MessengerDatabase.mdf;Integrated Security=True;Connect Timeout=30";
+        private readonly string _connectionString;
+
+        // This is the new constructor that builds the correct path.
+        public MessageDataService()
+        {
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            string projectRoot = Path.GetFullPath(Path.Combine(baseDirectory, @"..\..\.."));
+            string dbFilePath = Path.Combine(projectRoot, "MessengerDatabase.mdf");
+
+            // We build the connection string and remove "User Instance=true"
+            _connectionString = $@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename={dbFilePath};Integrated Security=True;Connect Timeout=30";
+        }
 
         public bool CreateMessage(Message message)
         {
