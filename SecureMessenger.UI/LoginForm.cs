@@ -16,12 +16,12 @@ namespace SecureMessenger.UI
             InitializeComponent();
             _authService = new AuthService(new CryptoService());
         }
+        public byte[] LoggedInUserPrivateKey { get; private set; }
 
         private void btnLogin_Click(object sender, EventArgs e)
         {
             string username = txtUsername.Text.Trim();
             string password = txtPassword.Text;
-
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             {
                 MessageBox.Show("Please enter both username and password.", "Input Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -31,7 +31,7 @@ namespace SecureMessenger.UI
             try
             {
                 byte[] decryptedPrivateKey = _authService.Login(username, password);
-
+                LoggedInUserPrivateKey = decryptedPrivateKey;
                 if (decryptedPrivateKey != null)
                 {
                     // Login successful!

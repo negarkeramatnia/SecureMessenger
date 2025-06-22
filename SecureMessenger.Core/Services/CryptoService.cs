@@ -71,7 +71,25 @@ namespace SecureMessenger.Core.Services
             return plaintext;
         }
 
-        // Add more crypto methods like RSA key wrapping here if needed later...
+        public byte[] RsaEncrypt(byte[] rsaPublicKeyBytes, byte[] dataToEncrypt)
+        {
+            using (var rsa = RSA.Create())
+            {
+                rsa.ImportRSAPublicKey(rsaPublicKeyBytes, out _);
+                return rsa.Encrypt(dataToEncrypt, RSAEncryptionPadding.OaepSHA256);
+            }
+        }
+
+        public byte[] RsaDecrypt(byte[] rsaPrivateKeyBytes, byte[] dataToDecrypt)
+        {
+            using (var rsa = RSA.Create())
+            {
+                rsa.ImportRSAPrivateKey(rsaPrivateKeyBytes, out _);
+                return rsa.Decrypt(dataToDecrypt, RSAEncryptionPadding.OaepSHA256);
+            }
+        }
+
+        public byte[] GenerateSymmetricKey() => RandomNumberGenerator.GetBytes(AesKeySize);
         public void Dispose() { }
     }
 }

@@ -24,7 +24,7 @@ namespace SecureMessenger.UI
                     if (loginForm.ShowDialog() == DialogResult.OK)
                     {
                         // Show the main form with the logged-in user's info
-                        using (var mainForm = new MainForm(loginForm.LoggedInUsername))
+                        using (var mainForm = new MainForm(loginForm.LoggedInUsername, loginForm.LoggedInUserPrivateKey))
                         {
                             mainForm.ShowDialog();
 
