@@ -1,0 +1,65 @@
+﻿using SecureMessenger.Core.Services;
+using System;
+using System.Windows.Forms;
+
+namespace SecureMessenger.UI
+{
+    public partial class RegistrationForm : Form
+    {
+        private readonly AuthService _authService;
+
+        public RegistrationForm()
+        {
+            InitializeComponent();
+            // In a real app with Dependency Injection, you'd get this from the container.
+            // For now, we create it directly.
+            _authService = new AuthService(new CryptoService());
+        }
+
+        private void btnRegister_Click(object sender, EventArgs e)
+        {
+            // 1. Get input from text boxes
+            string username = txtUsername.Text.Trim();
+            string password = txtPassword.Text;
+            string confirmPassword = txtConfirmPassword.Text;
+
+            // 2. Validate the input
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            {
+                MessageBox.Show("Username and password cannot be empty.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (password != confirmPassword)
+            {
+                MessageBox.Show("Passwords do not match.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (UserStore.GetUserByUsername(username) != null)
+            {
+                MessageBox.Show("This username is already taken. Please choose another one.", "Username Taken", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // 3. If validation passes, register the user
+            try
+            {
+                var newUser = _authService.RegisterUser(username, password);
+                UserStore.AddUser(newUser); // Add the newly registered user to our temporary store
+
+                MessageBox.Show($"User '{username}' registered successfully! You can now log in.", "Registration Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                // This will close the form and return an OK result to whoever opened it.
+                this.DialogResult = DialogResult.OK;
+                this.Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An unexpected error occurred during registration: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                // Ensure form does not close on error
+                this.DialogResult = DialogResult.None;
+            }
+        }
+    }
+}

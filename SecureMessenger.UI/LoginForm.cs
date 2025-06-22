@@ -1,0 +1,84 @@
+﻿using SecureMessenger.Core.Services;
+using System;
+using System.Windows.Forms;
+
+namespace SecureMessenger.UI
+{
+    public partial class LoginForm : Form
+    {
+        private readonly AuthService _authService;
+
+        // This property will hold the logged-in username to pass to the main form
+        public string LoggedInUsername { get; private set; }
+
+        public LoginForm()
+        {
+            InitializeComponent();
+            _authService = new AuthService(new CryptoService());
+        }
+
+        private void btnLogin_Click(object sender, EventArgs e)
+        {
+            string username = txtUsername.Text.Trim();
+            string password = txtPassword.Text;
+
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            {
+                MessageBox.Show("Please enter both username and password.", "Input Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var storedUser = UserStore.GetUserByUsername(username);
+            if (storedUser == null)
+            {
+                MessageBox.Show("Invalid username or password.", "Login Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            try
+            {
+                // The authService.Login method will verify the password and attempt to decrypt the private key
+                byte[] decryptedPrivateKey = _authService.Login(password, storedUser);
+
+                if (decryptedPrivateKey != null)
+                {
+                    // Login successful!
+                    MessageBox.Show($"Welcome, {username}!", "Login Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    LoggedInUsername = username;
+
+                    // In a real app, you would securely store the decryptedPrivateKey for the session.
+                    Array.Clear(decryptedPrivateKey, 0, decryptedPrivateKey.Length); // Clear it for this example.
+
+                    this.DialogResult = DialogResult.OK; // Signal to close this form and open the main one
+                    this.Close();
+                }
+                else
+                {
+                    // Login failed (wrong password)
+                    MessageBox.Show("Invalid username or password.", "Login Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An error occurred during login: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void linkRegister_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            // Open the registration form as a dialog
+            using (var registrationForm = new RegistrationForm())
+            {
+                this.Hide(); // Hide the login form while registration is open
+                registrationForm.ShowDialog();
+                this.Show(); // Show the login form again when registration is done
+            }
+        }
+
+        private void btnExit_Click(object sender, EventArgs e)
+        {
+            // Exit the entire application
+            Application.Exit();
+        }
+    }
+}
