@@ -39,8 +39,20 @@ namespace SecureMessenger.UI
             // 3. If validation passes, register the user
             try
             {
-                // The AuthService now handles the check for existing users.
-                bool success = _authService.RegisterUser(username, password);
+                // authService.RegisterUser now returns the full User object
+                var newUser = _authService.RegisterUser(username, password);
+
+                if (newUser == null)
+                {
+                    // This case should not be hit if the username is unique, but it's good practice.
+                    MessageBox.Show("Registration failed for an unknown reason.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    this.DialogResult = DialogResult.None;
+                    return;
+                }
+
+                // Now, we save the user to the database and check the result of THAT operation
+                var userDataService = new UserDataService();
+                bool success = userDataService.CreateUser(newUser);
 
                 if (success)
                 {
@@ -57,7 +69,6 @@ namespace SecureMessenger.UI
             catch (Exception ex)
             {
                 MessageBox.Show($"An unexpected error occurred during registration: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                // Ensure form does not close on error
                 this.DialogResult = DialogResult.None;
             }
         }

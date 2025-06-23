@@ -113,5 +113,18 @@ namespace SecureMessenger.Core.Services
             }
             return usernames;
         }
+        public void DeleteUserByUsername(string username)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                string sql = "DELETE FROM Users WHERE Username = @Username";
+                using (var command = new SqlCommand(sql, connection))
+                {
+                    command.Parameters.AddWithValue("@Username", username);
+                    command.ExecuteNonQuery();
+                }
+            }
+        }
     }
 }

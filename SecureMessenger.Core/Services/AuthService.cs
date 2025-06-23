@@ -7,27 +7,31 @@ namespace SecureMessenger.Core.Services
 {
     public class AuthService
     {
+        // --- NEW: This will hold the key for the current session ---
+        private byte[] _currentUserDecryptedPrivateKey;
+
         private readonly CryptoService _cryptoService;
-        private readonly UserDataService _userDataService; // Add this line
+        private readonly UserDataService _userDataService;
 
         public AuthService(CryptoService cryptoService)
         {
             _cryptoService = cryptoService;
-            _userDataService = new UserDataService(); // Add this line
+            _userDataService = new UserDataService();
         }
 
-        // The method signature changes to not return the User object, just a success/fail boolean
-        public bool RegisterUser(string username, string password)
+        public User RegisterUser(string username, string password)
         {
-            // REAL DATABASE CHECK: Check if the username already exists.
             if (_userDataService.UserExists(username))
             {
-                return false; // Indicate that registration failed because the user exists
+                FileLogger.Log($"[REGISTER] Warning: User '{username}' already exists.");
+                return null;
             }
 
             byte[] salt = _cryptoService.GenerateSalt();
             string passwordHash = _cryptoService.HashPassword(password, salt);
             var (publicKey, privateKeyRaw) = _cryptoService.GenerateRsaKeyPair();
+
+            FileLogger.Log($"[REGISTER] Generated Public Key for {username} starts with: {Convert.ToBase64String(publicKey).Substring(0, 10)}...");
 
             byte[] privateKeyEncryptionKey = _cryptoService.DeriveKeyFromPassword(password, salt);
             var (encryptedPkBytes, pkNonce, pkTag) = _cryptoService.EncryptWithAesGcm(privateKeyEncryptionKey, privateKeyRaw);
@@ -35,8 +39,7 @@ namespace SecureMessenger.Core.Services
             Array.Clear(privateKeyEncryptionKey, 0, privateKeyEncryptionKey.Length);
             Array.Clear(privateKeyRaw, 0, privateKeyRaw.Length);
 
-            // Create the user object to save to the database
-            var userToSave = new User
+            return new User
             {
                 Username = username,
                 PasswordHash = passwordHash,
@@ -46,45 +49,54 @@ namespace SecureMessenger.Core.Services
                 PrivateKeyNonce = pkNonce,
                 PrivateKeyAuthTag = pkTag
             };
-
-            // Save the new user to the database
-            return _userDataService.CreateUser(userToSave);
         }
 
-        // The Login method now needs to fetch the user from the database first
-        public byte[] Login(string username, string password)
+        // --- MODIFIED: Login now returns bool and saves the key internally ---
+        public bool Login(string password, User storedUser)
         {
-            // Fetch the user from the database
-            var storedUser = _userDataService.GetUserByUsername(username);
-            if (storedUser == null)
-            {
-                return null; // User not found
-            }
-
-            // The rest of the login logic remains the same!
             if (!_cryptoService.VerifyPassword(password, storedUser.Salt, storedUser.PasswordHash))
             {
-                return null;
+                FileLogger.Log($"[LOGIN] FAILED for user '{storedUser.Username}' due to wrong password.");
+                return false;
             }
 
             byte[] privateKeyEncryptionKey = _cryptoService.DeriveKeyFromPassword(password, storedUser.Salt);
             try
             {
-                byte[] decryptedPrivateKey = _cryptoService.DecryptWithAesGcm(
+                _currentUserDecryptedPrivateKey = _cryptoService.DecryptWithAesGcm(
                     privateKeyEncryptionKey,
                     storedUser.PrivateKeyNonce,
                     storedUser.EncryptedPrivateKey,
                     storedUser.PrivateKeyAuthTag
                 );
-                return decryptedPrivateKey;
+
+                FileLogger.Log($"[LOGIN] User '{storedUser.Username}' logged in. Their Public Key starts with: {Convert.ToBase64String(storedUser.PublicKey).Substring(0, 10)}...");
+                return true;
             }
-            catch (CryptographicException)
+            catch (CryptographicException ex)
             {
-                return null;
+                FileLogger.Log($"[LOGIN] FAILED for user '{storedUser.Username}'. Private key decryption failed: {ex.Message}");
+                return false;
             }
             finally
             {
                 Array.Clear(privateKeyEncryptionKey, 0, privateKeyEncryptionKey.Length);
+            }
+        }
+
+        // --- NEW: A method to get the current session's key ---
+        public byte[] GetCurrentUserPrivateKey()
+        {
+            return _currentUserDecryptedPrivateKey;
+        }
+
+        // --- NEW: A method to log out and clear the key ---
+        public void Logout()
+        {
+            if (_currentUserDecryptedPrivateKey != null)
+            {
+                Array.Clear(_currentUserDecryptedPrivateKey, 0, _currentUserDecryptedPrivateKey.Length);
+                _currentUserDecryptedPrivateKey = null;
             }
         }
     }

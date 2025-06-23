@@ -10,44 +10,35 @@ namespace SecureMessenger.UI
     public partial class MainForm : Form
     {
         // --- Services ---
-        private readonly UserDataService _userDataService;
+        private readonly AuthService _authService;
         private readonly MessageService _messageService;
-        private readonly AuthService _authService; // We need this to get keys
+        private readonly UserDataService _userDataService;
 
         // --- State Management ---
         private readonly string _loggedInUsername;
-        private User _loggedInUser;
-        private byte[] _loggedInUserPrivateKey;
         private string _selectedChatUser;
         private System.Windows.Forms.Timer _refreshTimer;
 
-        public MainForm(string loggedInUsername, byte[] decryptedPrivateKey)
+        public MainForm(string loggedInUsername, AuthService authService)
         {
             InitializeComponent();
             _loggedInUsername = loggedInUsername;
-            _loggedInUserPrivateKey = decryptedPrivateKey;
+            _authService = authService;
 
-            // Initialize services
-            _userDataService = new UserDataService();
+            // Initialize our services
             _messageService = new MessageService();
-            _authService = new AuthService(new CryptoService());
+            _userDataService = new UserDataService();
         }
 
+        // --- THIS METHOD WAS MISSING ---
+        // It runs automatically when the form first opens.
         private void MainForm_Load(object sender, EventArgs e)
         {
             this.Text = $"Secure Messenger - {_loggedInUsername}";
-            lblStatus.Text = $"Logged in as: {_loggedInUsername}";
+            lblStatus.Text = $"Logged in as: {_loggedInUsername}"; // Fixes the status label
 
-            _loggedInUser = _userDataService.GetUserByUsername(_loggedInUsername);
-            if (_loggedInUser == null)
-            {
-                MessageBox.Show("Could not load your user profile. Logging out.", "Critical Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                Logout();
-                return;
-            }
-
-            PopulateUserList();
-            SetupRefreshTimer();
+            PopulateUserList(); // Populates the user list on startup
+            SetupRefreshTimer(); // Starts the auto-refresh timer
         }
 
         private void PopulateUserList()
@@ -59,10 +50,8 @@ namespace SecureMessenger.UI
                 List<string> allUsernames = _userDataService.GetAllUsernames();
                 foreach (string username in allUsernames)
                 {
-                    if (username != _loggedInUsername)
-                    {
-                        lstUsers.Items.Add(username);
-                    }
+                    // This adds all users to the list
+                    lstUsers.Items.Add(username);
                 }
 
                 if (!string.IsNullOrEmpty(previouslySelected) && lstUsers.Items.Contains(previouslySelected))
@@ -76,31 +65,22 @@ namespace SecureMessenger.UI
             }
         }
 
+        // --- THIS METHOD WAS MISSING ---
         private void SetupRefreshTimer()
         {
             _refreshTimer = new System.Windows.Forms.Timer();
             _refreshTimer.Interval = 5000; // Refresh every 5 seconds
-            _refreshTimer.Tick += (sender, e) => LoadConversation(); // On each tick, call LoadConversation
+            _refreshTimer.Tick += (sender, e) => LoadConversation();
             _refreshTimer.Start();
-        }
-
-        private void lstUsers_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (lstUsers.SelectedItem != null)
-            {
-                _selectedChatUser = lstUsers.SelectedItem.ToString();
-                LoadConversation();
-            }
         }
 
         private void LoadConversation()
         {
             if (string.IsNullOrEmpty(_selectedChatUser))
             {
-                txtChatHistory.Text = "Select a user to view the conversation.";
+                // This line prevents trying to load a conversation when no one is selected
                 return;
             }
-
             try
             {
                 var conversation = _messageService.GetConversation(_loggedInUsername, _selectedChatUser);
@@ -108,12 +88,11 @@ namespace SecureMessenger.UI
 
                 foreach (var message in conversation)
                 {
-                    string decryptedText = _messageService.DecryptMessage(message, _loggedInUsername, _loggedInUserPrivateKey);
+                    string decryptedText = _messageService.DecryptMessage(message, _loggedInUsername, _authService);
                     string prefix = message.SenderUsername == _loggedInUsername ? "You" : message.SenderUsername;
                     chatHistory.AppendLine($"[{message.Timestamp:G}] {prefix}: {decryptedText}");
                 }
 
-                // Only update the textbox if the content has changed to prevent flickering
                 if (txtChatHistory.Text != chatHistory.ToString())
                 {
                     txtChatHistory.Text = chatHistory.ToString();
@@ -124,6 +103,17 @@ namespace SecureMessenger.UI
             catch (Exception ex)
             {
                 txtChatHistory.Text = $"Error loading conversation: {ex.Message}";
+            }
+        }
+
+        // This is the single, correct event handler for the user list
+        private void lstUsers_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (lstUsers.SelectedItem != null)
+            {
+                _selectedChatUser = lstUsers.SelectedItem.ToString();
+                txtChatHistory.Text = $"Loading conversation with {_selectedChatUser}..."; // Give instant feedback
+                LoadConversation();
             }
         }
 
@@ -138,12 +128,12 @@ namespace SecureMessenger.UI
             string messageText = txtMessageInput.Text.Trim();
             if (string.IsNullOrWhiteSpace(messageText)) return;
 
-            bool success = _messageService.SendMessage(_loggedInUsername, _selectedChatUser, messageText, _loggedInUserPrivateKey, _loggedInUser);
+            bool success = _messageService.SendMessage(_loggedInUsername, _selectedChatUser, messageText, _authService);
 
             if (success)
             {
                 txtMessageInput.Clear();
-                LoadConversation(); // Immediately refresh the chat after sending
+                LoadConversation();
             }
             else
             {
@@ -160,20 +150,16 @@ namespace SecureMessenger.UI
         {
             if (this.DialogResult != DialogResult.Retry)
             {
-                Logout(); // Ensure keys are cleared if user closes with 'X'
-                Application.Exit();
+                Logout();
+                Application.ExitThread();
             }
         }
 
         private void Logout()
         {
-            // Clear the sensitive private key from memory
-            if (_loggedInUserPrivateKey != null)
-            {
-                Array.Clear(_loggedInUserPrivateKey, 0, _loggedInUserPrivateKey.Length);
-            }
+            _authService.Logout();
             _refreshTimer?.Stop();
-            this.DialogResult = DialogResult.Retry; // Signal to Program.cs to show login form
+            this.DialogResult = DialogResult.Retry;
             this.Close();
         }
     }

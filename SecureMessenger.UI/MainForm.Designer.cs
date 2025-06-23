@@ -29,12 +29,11 @@
         private void InitializeComponent()
         {
             menuStrip1 = new MenuStrip();
-            fileToolStripMenuItem = new ToolStripMenuItem();
             logoutToolStripMenuItem = new ToolStripMenuItem();
             statusStrip1 = new StatusStrip();
+            lblStatus = new ToolStripStatusLabel();
             lstUsers = new ListBox();
             txtChatHistory = new TextBox();
-            lblStatus = new ToolStripStatusLabel();
             txtMessageInput = new TextBox();
             btnSendMessage = new Button();
             menuStrip1.SuspendLayout();
@@ -44,18 +43,12 @@
             // menuStrip1
             // 
             menuStrip1.ImageScalingSize = new Size(20, 20);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, logoutToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { logoutToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.Size = new Size(800, 28);
             menuStrip1.TabIndex = 0;
             menuStrip1.Text = "(Add items below)";
-            // 
-            // fileToolStripMenuItem
-            // 
-            fileToolStripMenuItem.Name = "fileToolStripMenuItem";
-            fileToolStripMenuItem.Size = new Size(46, 24);
-            fileToolStripMenuItem.Text = "File";
             // 
             // logoutToolStripMenuItem
             // 
@@ -74,41 +67,40 @@
             statusStrip1.TabIndex = 1;
             statusStrip1.Text = "statusStrip1";
             // 
-            // lstUsers
-            // 
-            lstUsers.FormattingEnabled = true;
-            lstUsers.Location = new Point(12, 31);
-            lstUsers.Name = "lstUsers";
-            lstUsers.Size = new Size(150, 344);
-            lstUsers.TabIndex = 2;
-            //lstUsers.SelectedIndexChanged += lstUsers_SelectedIndexChanged;
-            // 
-            // txtChatHistory
-            // 
-            txtChatHistory.Location = new Point(177, 31);
-            txtChatHistory.Multiline = true;
-            txtChatHistory.Name = "txtChatHistory";
-            txtChatHistory.ReadOnly = true;
-            txtChatHistory.Size = new Size(611, 344);
-            txtChatHistory.TabIndex = 4;
-            //txtChatHistory.TextChanged += txtChatHistory_TextChanged;
-            // 
             // lblStatus
             // 
             lblStatus.Name = "lblStatus";
             lblStatus.Size = new Size(97, 20);
             lblStatus.Text = "Logged in as:";
             // 
+            // lstUsers
+            // 
+            lstUsers.FormattingEnabled = true;
+            lstUsers.Location = new Point(12, 31);
+            lstUsers.Name = "lstUsers";
+            lstUsers.Size = new Size(139, 344);
+            lstUsers.TabIndex = 2;
+            lstUsers.SelectedIndexChanged += lstUsers_SelectedIndexChanged;
+            // 
+            // txtChatHistory
+            // 
+            txtChatHistory.Location = new Point(157, 31);
+            txtChatHistory.Multiline = true;
+            txtChatHistory.Name = "txtChatHistory";
+            txtChatHistory.ReadOnly = true;
+            txtChatHistory.Size = new Size(631, 344);
+            txtChatHistory.TabIndex = 4;
+            // 
             // txtMessageInput
             // 
-            txtMessageInput.Location = new Point(12, 394);
+            txtMessageInput.Location = new Point(12, 393);
             txtMessageInput.Name = "txtMessageInput";
             txtMessageInput.Size = new Size(676, 27);
             txtMessageInput.TabIndex = 5;
             // 
             // btnSendMessage
             // 
-            btnSendMessage.Location = new Point(706, 392);
+            btnSendMessage.Location = new Point(694, 391);
             btnSendMessage.Name = "btnSendMessage";
             btnSendMessage.Size = new Size(94, 29);
             btnSendMessage.TabIndex = 6;
@@ -142,7 +134,6 @@
         #endregion
 
         private MenuStrip menuStrip1;
-        private ToolStripMenuItem fileToolStripMenuItem;
         private ToolStripMenuItem logoutToolStripMenuItem;
         private StatusStrip statusStrip1;
         private ListBox lstUsers;

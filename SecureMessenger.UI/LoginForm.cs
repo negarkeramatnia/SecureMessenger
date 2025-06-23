@@ -7,14 +7,16 @@ namespace SecureMessenger.UI
     public partial class LoginForm : Form
     {
         private readonly AuthService _authService;
+        private readonly UserDataService _userDataService;
 
-        // This property will hold the logged-in username to pass to the main form
         public string LoggedInUsername { get; private set; }
 
-        public LoginForm()
+        // MODIFIED: Constructor now accepts an AuthService
+        public LoginForm(AuthService authService)
         {
             InitializeComponent();
-            _authService = new AuthService(new CryptoService());
+            _authService = authService;
+            _userDataService = new UserDataService();
         }
         public byte[] LoggedInUserPrivateKey { get; private set; }
 
@@ -22,6 +24,7 @@ namespace SecureMessenger.UI
         {
             string username = txtUsername.Text.Trim();
             string password = txtPassword.Text;
+            
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             {
                 MessageBox.Show("Please enter both username and password.", "Input Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -30,20 +33,27 @@ namespace SecureMessenger.UI
 
             try
             {
-                byte[] decryptedPrivateKey = _authService.Login(username, password);
-                LoggedInUserPrivateKey = decryptedPrivateKey;
-                if (decryptedPrivateKey != null)
+                var userDataService = new UserDataService();
+                var storedUser = userDataService.GetUserByUsername(username);
+
+                if (storedUser == null)
+                {
+                    MessageBox.Show("Invalid username or password.", "Login Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                // --- THIS IS THE CORRECTED PART ---
+                // Login now returns 'true' on success, not the private key.
+                if (_authService.Login(password, storedUser))
                 {
                     // Login successful!
                     MessageBox.Show($"Welcome, {username}!", "Login Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     LoggedInUsername = username;
 
-                    // In a real app, you would securely store the decryptedPrivateKey for the session.
-                    Array.Clear(decryptedPrivateKey, 0, decryptedPrivateKey.Length);
+                    // We no longer get the key here, so delete the old LoggedInUserPrivateKey line.
 
-                    // --- THESE ARE THE CRITICAL LINES ---
-                    this.DialogResult = DialogResult.OK; // Signal success to Program.cs
-                    this.Close();                        // Close the login form
+                    this.DialogResult = DialogResult.OK;
+                    this.Close();
                 }
                 else
                 {
