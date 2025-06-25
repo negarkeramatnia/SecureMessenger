@@ -1,5 +1,4 @@
-﻿// In SecureMessenger.Core/Services/MessageDataService.cs
-using SecureMessenger.Core.Models;
+﻿using SecureMessenger.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
@@ -17,8 +16,6 @@ namespace SecureMessenger.Core.Services
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
             string projectRoot = Path.GetFullPath(Path.Combine(baseDirectory, @"..\..\.."));
             string dbFilePath = Path.Combine(projectRoot, "MessengerDatabase.mdf");
-
-            // We build the connection string and remove "User Instance=true"
             _connectionString = $@"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename={dbFilePath};Integrated Security=True;Connect Timeout=30";
         }
 
@@ -74,13 +71,49 @@ namespace SecureMessenger.Core.Services
                                 AuthTag = (byte[])reader["AuthTag"],
                                 EncryptedMessageKeyForSender = (byte[])reader["EncryptedMessageKeyForSender"],
                                 EncryptedMessageKeyForRecipient = (byte[])reader["EncryptedMessageKeyForRecipient"],
-                                Timestamp = (DateTime)reader["Timestamp"]
+                                Timestamp = (DateTime)reader["Timestamp"],
+                                // --- ADDED THIS LINE ---
+                                IsEdited = (bool)reader["IsEdited"]
                             });
                         }
                     }
                 }
             }
             return messages;
+        }
+        public bool UpdateMessage(int messageId, byte[] newCiphertext, byte[] newNonce, byte[] newAuthTag)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                string sql = @"UPDATE Messages 
+                             SET Ciphertext = @Cipher, Nonce = @Nonce, AuthTag = @Tag, IsEdited = 1 
+                             WHERE Id = @MessageId";
+                using (var command = new SqlCommand(sql, connection))
+                {
+                    command.Parameters.AddWithValue("@MessageId", messageId);
+                    command.Parameters.AddWithValue("@Cipher", newCiphertext);
+                    command.Parameters.AddWithValue("@Nonce", newNonce);
+                    command.Parameters.AddWithValue("@Tag", newAuthTag);
+                    int rowsAffected = command.ExecuteNonQuery();
+                    return rowsAffected > 0;
+                }
+            }
+        }
+
+        public bool DeleteMessage(int messageId)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                string sql = "DELETE FROM Messages WHERE Id = @MessageId";
+                using (var command = new SqlCommand(sql, connection))
+                {
+                    command.Parameters.AddWithValue("@MessageId", messageId);
+                    int rowsAffected = command.ExecuteNonQuery();
+                    return rowsAffected > 0;
+                }
+            }
         }
     }
 }

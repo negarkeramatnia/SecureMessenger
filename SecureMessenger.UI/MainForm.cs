@@ -2,6 +2,7 @@ using SecureMessenger.Core.Models;
 using SecureMessenger.Core.Services;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -22,23 +23,19 @@ namespace SecureMessenger.UI
         public MainForm(string loggedInUsername, AuthService authService)
         {
             InitializeComponent();
-            _loggedInUsername = loggedInUsername;
             _authService = authService;
+            _loggedInUsername = loggedInUsername;
 
-            // Initialize our services
             _messageService = new MessageService();
             _userDataService = new UserDataService();
         }
 
-        // --- THIS METHOD WAS MISSING ---
-        // It runs automatically when the form first opens.
         private void MainForm_Load(object sender, EventArgs e)
         {
             this.Text = $"Secure Messenger - {_loggedInUsername}";
-            lblStatus.Text = $"Logged in as: {_loggedInUsername}"; // Fixes the status label
-
-            PopulateUserList(); // Populates the user list on startup
-            SetupRefreshTimer(); // Starts the auto-refresh timer
+            lblStatus.Text = $"Logged in as: {_loggedInUsername}";
+            PopulateUserList();
+            SetupRefreshTimer();
         }
 
         private void PopulateUserList()
@@ -50,7 +47,6 @@ namespace SecureMessenger.UI
                 List<string> allUsernames = _userDataService.GetAllUsernames();
                 foreach (string username in allUsernames)
                 {
-                    // This adds all users to the list
                     lstUsers.Items.Add(username);
                 }
 
@@ -65,7 +61,6 @@ namespace SecureMessenger.UI
             }
         }
 
-        // --- THIS METHOD WAS MISSING ---
         private void SetupRefreshTimer()
         {
             _refreshTimer = new System.Windows.Forms.Timer();
@@ -78,42 +73,59 @@ namespace SecureMessenger.UI
         {
             if (string.IsNullOrEmpty(_selectedChatUser))
             {
-                // This line prevents trying to load a conversation when no one is selected
+                // Do not clear the chat history if no user is selected, just stop.
                 return;
             }
+
             try
             {
                 var conversation = _messageService.GetConversation(_loggedInUsername, _selectedChatUser);
-                var chatHistory = new System.Text.StringBuilder();
 
+                // --- This section is important to prevent flickering ---
+                // We compare the new list with the old list before updating.
+                var newItems = new List<ChatMessageDisplay>();
                 foreach (var message in conversation)
                 {
                     string decryptedText = _messageService.DecryptMessage(message, _loggedInUsername, _authService);
                     string prefix = message.SenderUsername == _loggedInUsername ? "You" : message.SenderUsername;
-                    chatHistory.AppendLine($"[{message.Timestamp:G}] {prefix}: {decryptedText}");
+                    string displayText = $"[{message.Timestamp:G}] {prefix}: {decryptedText}";
+                    if (message.IsEdited) displayText += " (edited)";
+                    newItems.Add(new ChatMessageDisplay(message, displayText));
                 }
 
-                if (txtChatHistory.Text != chatHistory.ToString())
+                // Check if the conversation has actually changed before redrawing everything.
+                if (lstChatHistory.Items.Count != newItems.Count || !lstChatHistory.Items.Cast<ChatMessageDisplay>().Select(i => i.OriginalMessage.Id).SequenceEqual(newItems.Select(i => i.OriginalMessage.Id)))
                 {
-                    txtChatHistory.Text = chatHistory.ToString();
-                    txtChatHistory.SelectionStart = txtChatHistory.Text.Length;
-                    txtChatHistory.ScrollToCaret();
+                    int selectedIndex = lstChatHistory.SelectedIndex;
+                    lstChatHistory.Items.Clear();
+                    foreach (var item in newItems)
+                    {
+                        lstChatHistory.Items.Add(item);
+                    }
+                    if (selectedIndex != -1 && selectedIndex < lstChatHistory.Items.Count)
+                    {
+                        lstChatHistory.SelectedIndex = selectedIndex;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                txtChatHistory.Text = $"Error loading conversation: {ex.Message}";
+                // Do nothing in the timer tick to avoid annoying popups
             }
         }
 
-        // This is the single, correct event handler for the user list
         private void lstUsers_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (lstUsers.SelectedItem != null)
             {
                 _selectedChatUser = lstUsers.SelectedItem.ToString();
-                txtChatHistory.Text = $"Loading conversation with {_selectedChatUser}..."; // Give instant feedback
-                LoadConversation();
+
+                // --- THIS IS THE CORRECTED PART ---
+                // We now clear the ListBox and show a loading message in it.
+                lstChatHistory.Items.Clear();
+                lstChatHistory.Items.Add("Loading conversation...");
+
+                LoadConversation(); // Load the new conversation
             }
         }
 
@@ -146,6 +158,14 @@ namespace SecureMessenger.UI
             Logout();
         }
 
+        private void Logout()
+        {
+            _authService.Logout();
+            _refreshTimer?.Stop();
+            this.DialogResult = DialogResult.Retry;
+            this.Close();
+        }
+
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (this.DialogResult != DialogResult.Retry)
@@ -155,12 +175,64 @@ namespace SecureMessenger.UI
             }
         }
 
-        private void Logout()
+        // --- NEW AND CORRECTED METHODS FOR EDIT/DELETE ---
+        private void lstChatHistory_DrawItem(object sender, DrawItemEventArgs e)
         {
-            _authService.Logout();
-            _refreshTimer?.Stop();
-            this.DialogResult = DialogResult.Retry;
-            this.Close();
+            if (e.Index < 0) return;
+            var item = lstChatHistory.Items[e.Index] as ChatMessageDisplay;
+            if (item == null) return;
+
+            e.DrawBackground();
+            TextRenderer.DrawText(e.Graphics, item.DisplayText, e.Font, e.Bounds, Color.Black, TextFormatFlags.Left | TextFormatFlags.WordBreak);
+            e.DrawFocusRectangle();
+        }
+
+        private void contextMenuStrip1_Opening(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            // If nothing is selected in the chat history, don't show the menu.
+            if (lstChatHistory.SelectedItem == null)
+            {
+                e.Cancel = true; // This line stops the menu from appearing.
+                return;
+            }
+
+            var selectedMessageDisplay = lstChatHistory.SelectedItem as ChatMessageDisplay;
+            if (selectedMessageDisplay == null)
+            {
+                e.Cancel = true;
+                return;
+            }
+
+            // Only enable the "Delete Message" option if the message was sent by the logged-in user.
+            bool isMyMessage = selectedMessageDisplay.OriginalMessage.SenderUsername == _loggedInUsername;
+
+            // The first item (index 0) is "Edit Message", the second (index 1) is "Delete Message".
+            contextMenuStrip1.Items[0].Enabled = false; // "Edit Message" is always disabled for now.
+            contextMenuStrip1.Items[1].Enabled = isMyMessage; // "Delete Message" is only enabled if it's your message.
+        }
+
+        private void editMessageToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("Editing is not yet implemented.", "Coming Soon", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void deleteMessageToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var selectedMessageDisplay = lstChatHistory.SelectedItem as ChatMessageDisplay;
+            if (selectedMessageDisplay == null) return;
+            var result = MessageBox.Show("Are you sure you want to permanently delete this message?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (result == DialogResult.Yes)
+            {
+                bool success = _messageService.DeleteMessage(selectedMessageDisplay.OriginalMessage.Id, _loggedInUsername);
+                if (success)
+                {
+                    LoadConversation();
+                }
+                else
+                {
+                    MessageBox.Show("Failed to delete the message.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
         }
     }
 }

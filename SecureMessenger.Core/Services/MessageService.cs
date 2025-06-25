@@ -22,7 +22,6 @@ namespace SecureMessenger.Core.Services
             _messageDataService = new MessageDataService();
         }
 
-        // --- MODIFIED: SendMessage no longer needs the private key passed to it ---
         public bool SendMessage(string senderUsername, string recipientUsername, string plaintextMessage, AuthService authService)
         {
             var senderUser = _userDataService.GetUserByUsername(senderUsername);
@@ -66,7 +65,6 @@ namespace SecureMessenger.Core.Services
             }
         }
 
-        // --- MODIFIED: DecryptMessage no longer needs the private key passed to it ---
         public string DecryptMessage(Message message, string currentUsername, AuthService authService)
         {
             FileLogger.Log($"--- DECRYPTING message for {currentUsername} ---");
@@ -115,6 +113,39 @@ namespace SecureMessenger.Core.Services
         public List<Message> GetConversation(string user1, string user2)
         {
             return _messageDataService.GetConversation(user1, user2);
+        }
+
+        public bool EditMessage(int messageId, string newText, string currentUsername)
+        {
+            try
+            {
+                var messageToEdit = _messageDataService.GetConversation("dummy", "dummy")
+                    .FirstOrDefault(m => m.Id == messageId);
+
+                if (messageToEdit == null || messageToEdit.SenderUsername != currentUsername)
+                {
+                    return false;
+                }
+
+                var plaintextBytes = Encoding.UTF8.GetBytes(newText);
+                return false;
+            }
+            catch { return false; }
+        }
+
+        public bool DeleteMessage(int messageId, string currentUsername)
+        {
+            var allMessages = _messageDataService.GetConversation(currentUsername, "")
+                .Concat(_messageDataService.GetConversation("", currentUsername)).ToList(); // Get all messages involving the user
+
+            var messageToDelete = allMessages.FirstOrDefault(m => m.Id == messageId);
+
+            if (messageToDelete != null && messageToDelete.SenderUsername == currentUsername)
+            {
+                return _messageDataService.DeleteMessage(messageId);
+            }
+
+            return false;
         }
     }
 }

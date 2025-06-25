@@ -28,16 +28,21 @@
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             menuStrip1 = new MenuStrip();
             logoutToolStripMenuItem = new ToolStripMenuItem();
             statusStrip1 = new StatusStrip();
             lblStatus = new ToolStripStatusLabel();
             lstUsers = new ListBox();
-            txtChatHistory = new TextBox();
             txtMessageInput = new TextBox();
             btnSendMessage = new Button();
+            lstChatHistory = new ListBox();
+            contextMenuStrip1 = new ContextMenuStrip(components);
+            editMessageToolStripMenuItem = new ToolStripMenuItem();
+            deleteMessageToolStripMenuItem = new ToolStripMenuItem();
             menuStrip1.SuspendLayout();
             statusStrip1.SuspendLayout();
+            contextMenuStrip1.SuspendLayout();
             SuspendLayout();
             // 
             // menuStrip1
@@ -76,20 +81,11 @@
             // lstUsers
             // 
             lstUsers.FormattingEnabled = true;
-            lstUsers.Location = new Point(12, 31);
+            lstUsers.Location = new Point(12, 29);
             lstUsers.Name = "lstUsers";
             lstUsers.Size = new Size(139, 344);
             lstUsers.TabIndex = 2;
             lstUsers.SelectedIndexChanged += lstUsers_SelectedIndexChanged;
-            // 
-            // txtChatHistory
-            // 
-            txtChatHistory.Location = new Point(157, 31);
-            txtChatHistory.Multiline = true;
-            txtChatHistory.Name = "txtChatHistory";
-            txtChatHistory.ReadOnly = true;
-            txtChatHistory.Size = new Size(631, 344);
-            txtChatHistory.TabIndex = 4;
             // 
             // txtMessageInput
             // 
@@ -108,14 +104,49 @@
             btnSendMessage.UseVisualStyleBackColor = true;
             btnSendMessage.Click += btnSendMessage_Click;
             // 
+            // lstChatHistory
+            // 
+            lstChatHistory.BorderStyle = BorderStyle.FixedSingle;
+            lstChatHistory.ContextMenuStrip = contextMenuStrip1;
+            lstChatHistory.DrawMode = DrawMode.OwnerDrawFixed;
+            lstChatHistory.FormattingEnabled = true;
+            lstChatHistory.Location = new Point(157, 31);
+            lstChatHistory.Name = "lstChatHistory";
+            lstChatHistory.Size = new Size(631, 342);
+            lstChatHistory.TabIndex = 7;
+            lstChatHistory.DrawItem += lstChatHistory_DrawItem;
+            lstChatHistory.SelectedIndexChanged += lstUsers_SelectedIndexChanged;
+            // 
+            // contextMenuStrip1
+            // 
+            contextMenuStrip1.ImageScalingSize = new Size(20, 20);
+            contextMenuStrip1.Items.AddRange(new ToolStripItem[] { editMessageToolStripMenuItem, deleteMessageToolStripMenuItem });
+            contextMenuStrip1.Name = "contextMenuStrip1";
+            contextMenuStrip1.Size = new Size(211, 80);
+            contextMenuStrip1.Opening += contextMenuStrip1_Opening;
+            // 
+            // editMessageToolStripMenuItem
+            // 
+            editMessageToolStripMenuItem.Name = "editMessageToolStripMenuItem";
+            editMessageToolStripMenuItem.Size = new Size(210, 24);
+            editMessageToolStripMenuItem.Text = "Edit Message";
+            editMessageToolStripMenuItem.Click += editMessageToolStripMenuItem_Click;
+            // 
+            // deleteMessageToolStripMenuItem
+            // 
+            deleteMessageToolStripMenuItem.Name = "deleteMessageToolStripMenuItem";
+            deleteMessageToolStripMenuItem.Size = new Size(210, 24);
+            deleteMessageToolStripMenuItem.Text = "Delete Message";
+            deleteMessageToolStripMenuItem.Click += deleteMessageToolStripMenuItem_Click;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
+            Controls.Add(lstChatHistory);
             Controls.Add(btnSendMessage);
             Controls.Add(txtMessageInput);
-            Controls.Add(txtChatHistory);
             Controls.Add(lstUsers);
             Controls.Add(statusStrip1);
             Controls.Add(menuStrip1);
@@ -127,6 +158,7 @@
             menuStrip1.PerformLayout();
             statusStrip1.ResumeLayout(false);
             statusStrip1.PerformLayout();
+            contextMenuStrip1.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -137,9 +169,12 @@
         private ToolStripMenuItem logoutToolStripMenuItem;
         private StatusStrip statusStrip1;
         private ListBox lstUsers;
-        private TextBox txtChatHistory;
         private ToolStripStatusLabel lblStatus;
         private TextBox txtMessageInput;
         private Button btnSendMessage;
+        private ListBox lstChatHistory;
+        private ContextMenuStrip contextMenuStrip1;
+        private ToolStripMenuItem editMessageToolStripMenuItem;
+        private ToolStripMenuItem deleteMessageToolStripMenuItem;
     }
 }
