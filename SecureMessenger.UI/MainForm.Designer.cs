@@ -116,26 +116,27 @@
             lstChatHistory.TabIndex = 7;
             lstChatHistory.DrawItem += lstChatHistory_DrawItem;
             lstChatHistory.SelectedIndexChanged += lstUsers_SelectedIndexChanged;
+            lstChatHistory.MouseDown += lstChatHistory_MouseDown;
             // 
             // contextMenuStrip1
             // 
             contextMenuStrip1.ImageScalingSize = new Size(20, 20);
             contextMenuStrip1.Items.AddRange(new ToolStripItem[] { editMessageToolStripMenuItem, deleteMessageToolStripMenuItem });
             contextMenuStrip1.Name = "contextMenuStrip1";
-            contextMenuStrip1.Size = new Size(211, 80);
+            contextMenuStrip1.Size = new Size(185, 52);
             contextMenuStrip1.Opening += contextMenuStrip1_Opening;
             // 
             // editMessageToolStripMenuItem
             // 
             editMessageToolStripMenuItem.Name = "editMessageToolStripMenuItem";
-            editMessageToolStripMenuItem.Size = new Size(210, 24);
+            editMessageToolStripMenuItem.Size = new Size(184, 24);
             editMessageToolStripMenuItem.Text = "Edit Message";
             editMessageToolStripMenuItem.Click += editMessageToolStripMenuItem_Click;
             // 
             // deleteMessageToolStripMenuItem
             // 
             deleteMessageToolStripMenuItem.Name = "deleteMessageToolStripMenuItem";
-            deleteMessageToolStripMenuItem.Size = new Size(210, 24);
+            deleteMessageToolStripMenuItem.Size = new Size(184, 24);
             deleteMessageToolStripMenuItem.Text = "Delete Message";
             deleteMessageToolStripMenuItem.Click += deleteMessageToolStripMenuItem_Click;
             // 

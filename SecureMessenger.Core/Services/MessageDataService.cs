@@ -81,6 +81,39 @@ namespace SecureMessenger.Core.Services
             }
             return messages;
         }
+
+        public Message GetMessageById(int messageId)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                string sql = "SELECT * FROM Messages WHERE Id = @MessageId";
+                using (var command = new SqlCommand(sql, connection))
+                {
+                    command.Parameters.AddWithValue("@MessageId", messageId);
+                    using (var reader = command.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            return new Message
+                            {
+                                Id = (int)reader["Id"],
+                                SenderUsername = (string)reader["SenderUsername"],
+                                RecipientUsername = (string)reader["RecipientUsername"],
+                                Ciphertext = (byte[])reader["Ciphertext"],
+                                Nonce = (byte[])reader["Nonce"],
+                                AuthTag = (byte[])reader["AuthTag"],
+                                EncryptedMessageKeyForSender = (byte[])reader["EncryptedMessageKeyForSender"],
+                                EncryptedMessageKeyForRecipient = (byte[])reader["EncryptedMessageKeyForRecipient"],
+                                Timestamp = (DateTime)reader["Timestamp"],
+                                IsEdited = (bool)reader["IsEdited"]
+                            };
+                        }
+                    }
+                }
+            }
+            return null; // Message not found
+        }
         public bool UpdateMessage(int messageId, byte[] newCiphertext, byte[] newNonce, byte[] newAuthTag)
         {
             using (var connection = new SqlConnection(_connectionString))

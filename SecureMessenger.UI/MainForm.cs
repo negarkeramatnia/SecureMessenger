@@ -234,5 +234,21 @@ namespace SecureMessenger.UI
                 }
             }
         }
+
+        private void lstChatHistory_MouseDown(object sender, MouseEventArgs e)
+        {
+            // We only care about right-clicks
+            if (e.Button == MouseButtons.Right)
+            {
+                // Figure out which item in the list is under the mouse cursor
+                int index = this.lstChatHistory.IndexFromPoint(e.Location);
+
+                // If the cursor is over a valid item, select it.
+                if (index != ListBox.NoMatches)
+                {
+                    this.lstChatHistory.SelectedIndex = index;
+                }
+            }
+        }
     }
 }

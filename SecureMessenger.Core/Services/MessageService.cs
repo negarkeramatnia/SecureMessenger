@@ -135,16 +135,17 @@ namespace SecureMessenger.Core.Services
 
         public bool DeleteMessage(int messageId, string currentUsername)
         {
-            var allMessages = _messageDataService.GetConversation(currentUsername, "")
-                .Concat(_messageDataService.GetConversation("", currentUsername)).ToList(); // Get all messages involving the user
+            // First, fetch the specific message by its ID to perform a security check.
+            var messageToDelete = _messageDataService.GetMessageById(messageId);
 
-            var messageToDelete = allMessages.FirstOrDefault(m => m.Id == messageId);
-
+            // Security Check: Ensure the message exists AND the user trying to delete it is the original sender.
             if (messageToDelete != null && messageToDelete.SenderUsername == currentUsername)
             {
+                // If the check passes, delete the message from the database.
                 return _messageDataService.DeleteMessage(messageId);
             }
 
+            // If the check fails, do not delete the message.
             return false;
         }
     }
