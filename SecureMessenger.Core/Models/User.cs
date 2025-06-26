@@ -1,5 +1,4 @@
-﻿// In SecureMessenger.Core/Models/User.cs
-namespace SecureMessenger.Core.Models
+﻿namespace SecureMessenger.Core.Models
 {
     public class User
     {
@@ -7,8 +6,8 @@ namespace SecureMessenger.Core.Models
         public string Username { get; set; }
         public string PasswordHash { get; set; }
         public byte[] Salt { get; set; }
-        public byte[] PublicKey { get; set; }
-        public byte[] EncryptedPrivateKey { get; set; }
+        public byte[] IdentityPublicKey { get; set; } // Renamed from PublicKey
+        public byte[] EncryptedIdentityKey { get; set; } // Renamed from EncryptedPrivateKey
         public byte[] PrivateKeyNonce { get; set; }
         public byte[] PrivateKeyAuthTag { get; set; }
     }

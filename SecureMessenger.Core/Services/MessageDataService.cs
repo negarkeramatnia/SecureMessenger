@@ -10,7 +10,6 @@ namespace SecureMessenger.Core.Services
     {
         private readonly string _connectionString;
 
-        // This is the new constructor that builds the correct path.
         public MessageDataService()
         {
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
@@ -24,39 +23,32 @@ namespace SecureMessenger.Core.Services
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                string sql = @"INSERT INTO Messages (SenderUsername, RecipientUsername, Ciphertext, Nonce, AuthTag, EncryptedMessageKeyForSender, EncryptedMessageKeyForRecipient, Timestamp)
-                             VALUES (@Sender, @Recipient, @Cipher, @Nonce, @Tag, @KeySender, @KeyRecipient, @Timestamp)";
+                string sql = @"INSERT INTO Messages (RecipientUsername, TargetPreKeyId, SenderIdentityKey, SenderEphemeralKey, Ciphertext, Timestamp)
+                             VALUES (@Recipient, @TargetPreKeyId, @SenderIdentityKey, @SenderEphemeralKey, @Ciphertext, @Timestamp)";
                 using (var command = new SqlCommand(sql, connection))
                 {
-                    command.Parameters.AddWithValue("@Sender", message.SenderUsername);
                     command.Parameters.AddWithValue("@Recipient", message.RecipientUsername);
-                    command.Parameters.AddWithValue("@Cipher", message.Ciphertext);
-                    command.Parameters.AddWithValue("@Nonce", message.Nonce);
-                    command.Parameters.AddWithValue("@Tag", message.AuthTag);
-                    command.Parameters.AddWithValue("@KeySender", message.EncryptedMessageKeyForSender);
-                    command.Parameters.AddWithValue("@KeyRecipient", message.EncryptedMessageKeyForRecipient);
+                    command.Parameters.AddWithValue("@TargetPreKeyId", message.TargetPreKeyId);
+                    command.Parameters.AddWithValue("@SenderIdentityKey", message.SenderIdentityKey);
+                    command.Parameters.AddWithValue("@SenderEphemeralKey", message.SenderEphemeralKey);
+                    command.Parameters.AddWithValue("@Ciphertext", message.Ciphertext);
                     command.Parameters.AddWithValue("@Timestamp", message.Timestamp);
 
-                    int rowsAffected = command.ExecuteNonQuery();
-                    return rowsAffected > 0;
+                    return command.ExecuteNonQuery() > 0;
                 }
             }
         }
 
-        public List<Message> GetConversation(string user1, string user2)
+        public List<Message> GetMessagesForUser(string username)
         {
             var messages = new List<Message>();
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                string sql = @"SELECT * FROM Messages 
-                             WHERE (SenderUsername = @User1 AND RecipientUsername = @User2) 
-                                OR (SenderUsername = @User2 AND RecipientUsername = @User1) 
-                             ORDER BY Timestamp ASC";
+                string sql = "SELECT * FROM Messages WHERE RecipientUsername = @Username ORDER BY Timestamp ASC";
                 using (var command = new SqlCommand(sql, connection))
                 {
-                    command.Parameters.AddWithValue("@User1", user1);
-                    command.Parameters.AddWithValue("@User2", user2);
+                    command.Parameters.AddWithValue("@Username", username);
                     using (var reader = command.ExecuteReader())
                     {
                         while (reader.Read())
@@ -64,22 +56,32 @@ namespace SecureMessenger.Core.Services
                             messages.Add(new Message
                             {
                                 Id = (int)reader["Id"],
-                                SenderUsername = (string)reader["SenderUsername"],
                                 RecipientUsername = (string)reader["RecipientUsername"],
+                                TargetPreKeyId = (int)reader["TargetPreKeyId"],
+                                SenderIdentityKey = (byte[])reader["SenderIdentityKey"],
+                                SenderEphemeralKey = (byte[])reader["SenderEphemeralKey"],
                                 Ciphertext = (byte[])reader["Ciphertext"],
-                                Nonce = (byte[])reader["Nonce"],
-                                AuthTag = (byte[])reader["AuthTag"],
-                                EncryptedMessageKeyForSender = (byte[])reader["EncryptedMessageKeyForSender"],
-                                EncryptedMessageKeyForRecipient = (byte[])reader["EncryptedMessageKeyForRecipient"],
-                                Timestamp = (DateTime)reader["Timestamp"],
-                                // --- ADDED THIS LINE ---
-                                IsEdited = (bool)reader["IsEdited"]
+                                Timestamp = (DateTime)reader["Timestamp"]
                             });
                         }
                     }
                 }
             }
             return messages;
+        }
+
+        public void DeleteMessage(int messageId)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                string sql = "DELETE FROM Messages WHERE Id = @MessageId";
+                using (var command = new SqlCommand(sql, connection))
+                {
+                    command.Parameters.AddWithValue("@MessageId", messageId);
+                    command.ExecuteNonQuery();
+                }
+            }
         }
 
         public Message GetMessageById(int messageId)
@@ -95,61 +97,21 @@ namespace SecureMessenger.Core.Services
                     {
                         if (reader.Read())
                         {
+                            // This re-uses the logic from your GetMessagesForUser method
                             return new Message
                             {
                                 Id = (int)reader["Id"],
-                                SenderUsername = (string)reader["SenderUsername"],
                                 RecipientUsername = (string)reader["RecipientUsername"],
+                                SenderIdentityKey = (byte[])reader["SenderIdentityKey"],
+                                SenderEphemeralKey = (byte[])reader["SenderEphemeralKey"],
                                 Ciphertext = (byte[])reader["Ciphertext"],
-                                Nonce = (byte[])reader["Nonce"],
-                                AuthTag = (byte[])reader["AuthTag"],
-                                EncryptedMessageKeyForSender = (byte[])reader["EncryptedMessageKeyForSender"],
-                                EncryptedMessageKeyForRecipient = (byte[])reader["EncryptedMessageKeyForRecipient"],
-                                Timestamp = (DateTime)reader["Timestamp"],
-                                IsEdited = (bool)reader["IsEdited"]
+                                Timestamp = (DateTime)reader["Timestamp"]
                             };
                         }
                     }
                 }
             }
             return null; // Message not found
-        }
-        public bool UpdateMessage(int messageId, byte[] newCiphertext, byte[] newNonce, byte[] newAuthTag)
-        {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                connection.Open();
-                string sql = @"UPDATE Messages 
-                             SET Ciphertext = @Cipher, Nonce = @Nonce, AuthTag = @Tag, IsEdited = 1 
-                             WHERE Id = @MessageId";
-                using (var command = new SqlCommand(sql, connection))
-                {
-                    command.Parameters.AddWithValue("@MessageId", messageId);
-                    command.Parameters.AddWithValue("@Cipher", newCiphertext);
-                    command.Parameters.AddWithValue("@Nonce", newNonce);
-                    command.Parameters.AddWithValue("@Tag", newAuthTag);
-                    int rowsAffected = command.ExecuteNonQuery();
-                    return rowsAffected > 0;
-                }
-            }
-        }
-
-        public bool DeleteMessage(int messageId, string currentUsername)
-        {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                connection.Open();
-                // We only allow the sender to delete the message.
-                string sql = "DELETE FROM Messages WHERE Id = @MessageId AND SenderUsername = @Username";
-                using (var command = new SqlCommand(sql, connection))
-                {
-                    command.Parameters.AddWithValue("@MessageId", messageId);
-                    command.Parameters.AddWithValue("@Username", currentUsername);
-
-                    int rowsAffected = command.ExecuteNonQuery();
-                    return rowsAffected > 0;
-                }
-            }
         }
     }
 }

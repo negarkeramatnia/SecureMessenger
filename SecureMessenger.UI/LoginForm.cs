@@ -24,46 +24,19 @@ namespace SecureMessenger.UI
         {
             string username = txtUsername.Text.Trim();
             string password = txtPassword.Text;
-            
-            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password)) { /* ... */ return; }
+
+            // The Login method now just returns true or false
+            if (_authService.Login(username, password))
             {
-                MessageBox.Show("Please enter both username and password.", "Input Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
+                LoggedInUsername = username;
+                this.DialogResult = DialogResult.OK;
+                this.Close();
             }
-
-            try
+            else
             {
-                var userDataService = new UserDataService();
-                var storedUser = userDataService.GetUserByUsername(username);
-
-                if (storedUser == null)
-                {
-                    MessageBox.Show("Invalid username or password.", "Login Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-
-                // --- THIS IS THE CORRECTED PART ---
-                // Login now returns 'true' on success, not the private key.
-                if (_authService.Login(password, storedUser))
-                {
-                    // Login successful!
-                    MessageBox.Show($"Welcome, {username}!", "Login Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    LoggedInUsername = username;
-
-                    // We no longer get the key here, so delete the old LoggedInUserPrivateKey line.
-
-                    this.DialogResult = DialogResult.OK;
-                    this.Close();
-                }
-                else
-                {
-                    // Login failed (wrong password)
-                    MessageBox.Show("Invalid username or password.", "Login Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"An error occurred during login: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Invalid username or password.", "Login Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

@@ -1,5 +1,4 @@
-﻿// In SecureMessenger.Core/Services/AuthService.cs
-using SecureMessenger.Core.Models;
+﻿using SecureMessenger.Core.Models;
 using System;
 using System.Security.Cryptography;
 
@@ -7,96 +6,97 @@ namespace SecureMessenger.Core.Services
 {
     public class AuthService
     {
-        // --- NEW: This will hold the key for the current session ---
-        private byte[] _currentUserDecryptedPrivateKey;
+        private byte[] _currentUserDecryptedIdentityKey;
 
         private readonly CryptoService _cryptoService;
         private readonly UserDataService _userDataService;
 
-        public AuthService(CryptoService cryptoService)
+        public AuthService()
         {
-            _cryptoService = cryptoService;
+            _cryptoService = new CryptoService();
             _userDataService = new UserDataService();
         }
 
-        public User RegisterUser(string username, string password)
+        public bool RegisterUser(string username, string password)
         {
             if (_userDataService.UserExists(username))
             {
-                FileLogger.Log($"[REGISTER] Warning: User '{username}' already exists.");
-                return null;
+                return false; // User already exists
             }
 
-            byte[] salt = _cryptoService.GenerateSalt();
-            string passwordHash = _cryptoService.HashPassword(password, salt);
-            var (publicKey, privateKeyRaw) = _cryptoService.GenerateRsaKeyPair();
+            var salt = _cryptoService.GenerateSalt();
+            var passwordHash = _cryptoService.HashPassword(password, salt);
 
-            FileLogger.Log($"[REGISTER] Generated Public Key for {username} starts with: {Convert.ToBase64String(publicKey).Substring(0, 10)}...");
+            // Generate the new, more secure ECDsa identity keys
+            var (publicKey, privateKeyRaw) = _cryptoService.GenerateIdentityKeyPair();
 
-            byte[] privateKeyEncryptionKey = _cryptoService.DeriveKeyFromPassword(password, salt);
-            var (encryptedPkBytes, pkNonce, pkTag) = _cryptoService.EncryptWithAesGcm(privateKeyEncryptionKey, privateKeyRaw);
+            var pkek = _cryptoService.DeriveKeyFromPassword(password, salt);
+            byte[] encryptedPayload = _cryptoService.EncryptWithAesGcm(pkek, privateKeyRaw);
 
-            Array.Clear(privateKeyEncryptionKey, 0, privateKeyEncryptionKey.Length);
+            // Manually split the payload into its parts for database storage
+            const int AesNonceSize = 12;
+            const int AesTagSize = 16;
+            byte[] pkNonce = encryptedPayload.Take(AesNonceSize).ToArray();
+            byte[] pkTag = encryptedPayload.Skip(AesNonceSize).Take(AesTagSize).ToArray();
+            byte[] encryptedPkBytes = encryptedPayload.Skip(AesNonceSize + AesTagSize).ToArray();
+
+            Array.Clear(pkek, 0, pkek.Length);
             Array.Clear(privateKeyRaw, 0, privateKeyRaw.Length);
 
-            return new User
+            var newUser = new User
             {
                 Username = username,
                 PasswordHash = passwordHash,
                 Salt = salt,
-                PublicKey = publicKey,
-                EncryptedPrivateKey = encryptedPkBytes,
+                IdentityPublicKey = publicKey,
+                EncryptedIdentityKey = encryptedPkBytes,
                 PrivateKeyNonce = pkNonce,
                 PrivateKeyAuthTag = pkTag
             };
+
+            return _userDataService.CreateUser(newUser);
         }
 
-        // --- MODIFIED: Login now returns bool and saves the key internally ---
-        public bool Login(string password, User storedUser)
+        public bool Login(string username, string password)
         {
+            var storedUser = _userDataService.GetUserByUsername(username);
+            if (storedUser == null) return false;
+
             if (!_cryptoService.VerifyPassword(password, storedUser.Salt, storedUser.PasswordHash))
             {
-                FileLogger.Log($"[LOGIN] FAILED for user '{storedUser.Username}' due to wrong password.");
                 return false;
             }
 
-            byte[] privateKeyEncryptionKey = _cryptoService.DeriveKeyFromPassword(password, storedUser.Salt);
+            var pkek = _cryptoService.DeriveKeyFromPassword(password, storedUser.Salt);
             try
             {
-                _currentUserDecryptedPrivateKey = _cryptoService.DecryptWithAesGcm(
-                    privateKeyEncryptionKey,
-                    storedUser.PrivateKeyNonce,
-                    storedUser.EncryptedPrivateKey,
-                    storedUser.PrivateKeyAuthTag
-                );
+                byte[] encryptedPayload = new byte[storedUser.PrivateKeyNonce.Length + storedUser.PrivateKeyAuthTag.Length + storedUser.EncryptedIdentityKey.Length];
+                Buffer.BlockCopy(storedUser.PrivateKeyNonce, 0, encryptedPayload, 0, storedUser.PrivateKeyNonce.Length);
+                Buffer.BlockCopy(storedUser.PrivateKeyAuthTag, 0, encryptedPayload, storedUser.PrivateKeyNonce.Length, storedUser.PrivateKeyAuthTag.Length);
+                Buffer.BlockCopy(storedUser.EncryptedIdentityKey, 0, encryptedPayload, storedUser.PrivateKeyNonce.Length + storedUser.PrivateKeyAuthTag.Length, storedUser.EncryptedIdentityKey.Length);
 
-                FileLogger.Log($"[LOGIN] User '{storedUser.Username}' logged in. Their Public Key starts with: {Convert.ToBase64String(storedUser.PublicKey).Substring(0, 10)}...");
+                // Now, decrypt the combined payload
+                _currentUserDecryptedIdentityKey = _cryptoService.DecryptWithAesGcm(pkek, encryptedPayload);
                 return true;
             }
-            catch (CryptographicException ex)
+            catch (CryptographicException)
             {
-                FileLogger.Log($"[LOGIN] FAILED for user '{storedUser.Username}'. Private key decryption failed: {ex.Message}");
                 return false;
             }
             finally
             {
-                Array.Clear(privateKeyEncryptionKey, 0, privateKeyEncryptionKey.Length);
+                Array.Clear(pkek, 0, pkek.Length);
             }
         }
 
-        // --- NEW: A method to get the current session's key ---
-        public byte[] GetCurrentUserPrivateKey()
-        {
-            return _currentUserDecryptedPrivateKey;
-        }
+        public byte[] GetCurrentUserPrivateKey() => _currentUserDecryptedIdentityKey;
 
-        // --- NEW: A method to log out and clear the key ---
         public void Logout()
         {
-            if (_currentUserDecryptedPrivateKey != null)
+            if (_currentUserDecryptedIdentityKey != null)
             {
-                Array.Clear(_currentUserDecryptedPrivateKey, 0, _currentUserDecryptedPrivateKey.Length);
-                _currentUserDecryptedPrivateKey = null;
+                Array.Clear(_currentUserDecryptedIdentityKey, 0, _currentUserDecryptedIdentityKey.Length);
+                _currentUserDecryptedIdentityKey = null;
             }
         }
     }
