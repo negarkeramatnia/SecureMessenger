@@ -142,7 +142,7 @@ namespace SecureMessenger.Core.Services
             if (messageToDelete != null && messageToDelete.SenderUsername == currentUsername)
             {
                 // If the check passes, delete the message from the database.
-                return _messageDataService.DeleteMessage(messageId);
+                return _messageDataService.DeleteMessage(messageId, currentUsername);
             }
 
             // If the check fails, do not delete the message.

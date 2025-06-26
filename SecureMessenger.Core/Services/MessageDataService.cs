@@ -134,15 +134,18 @@ namespace SecureMessenger.Core.Services
             }
         }
 
-        public bool DeleteMessage(int messageId)
+        public bool DeleteMessage(int messageId, string currentUsername)
         {
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                string sql = "DELETE FROM Messages WHERE Id = @MessageId";
+                // We only allow the sender to delete the message.
+                string sql = "DELETE FROM Messages WHERE Id = @MessageId AND SenderUsername = @Username";
                 using (var command = new SqlCommand(sql, connection))
                 {
                     command.Parameters.AddWithValue("@MessageId", messageId);
+                    command.Parameters.AddWithValue("@Username", currentUsername);
+
                     int rowsAffected = command.ExecuteNonQuery();
                     return rowsAffected > 0;
                 }

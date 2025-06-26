@@ -71,46 +71,40 @@ namespace SecureMessenger.UI
 
         private void LoadConversation()
         {
-            if (string.IsNullOrEmpty(_selectedChatUser))
-            {
-                // Do not clear the chat history if no user is selected, just stop.
-                return;
-            }
+            if (string.IsNullOrEmpty(_selectedChatUser)) return;
 
             try
             {
+                lstChatHistory.Items.Clear(); // Clear the list
                 var conversation = _messageService.GetConversation(_loggedInUsername, _selectedChatUser);
 
-                // --- This section is important to prevent flickering ---
-                // We compare the new list with the old list before updating.
-                var newItems = new List<ChatMessageDisplay>();
                 foreach (var message in conversation)
                 {
                     string decryptedText = _messageService.DecryptMessage(message, _loggedInUsername, _authService);
                     string prefix = message.SenderUsername == _loggedInUsername ? "You" : message.SenderUsername;
-                    string displayText = $"[{message.Timestamp:G}] {prefix}: {decryptedText}";
-                    if (message.IsEdited) displayText += " (edited)";
-                    newItems.Add(new ChatMessageDisplay(message, displayText));
-                }
 
-                // Check if the conversation has actually changed before redrawing everything.
-                if (lstChatHistory.Items.Count != newItems.Count || !lstChatHistory.Items.Cast<ChatMessageDisplay>().Select(i => i.OriginalMessage.Id).SequenceEqual(newItems.Select(i => i.OriginalMessage.Id)))
+                    // Create a new ListViewItem
+                    var item = new ListViewItem(message.Timestamp.ToString("G"));
+                    item.SubItems.Add(prefix);
+                    item.SubItems.Add(decryptedText);
+                    item.Tag = message; // IMPORTANT: Store the message object here
+
+                    lstChatHistory.Items.Add(item);
+                }
+                // Auto-scroll to the bottom
+                if (lstChatHistory.Items.Count > 0)
                 {
-                    int selectedIndex = lstChatHistory.SelectedIndex;
-                    lstChatHistory.Items.Clear();
-                    foreach (var item in newItems)
-                    {
-                        lstChatHistory.Items.Add(item);
-                    }
-                    if (selectedIndex != -1 && selectedIndex < lstChatHistory.Items.Count)
-                    {
-                        lstChatHistory.SelectedIndex = selectedIndex;
-                    }
+                    lstChatHistory.EnsureVisible(lstChatHistory.Items.Count - 1);
                 }
             }
             catch (Exception ex)
             {
-                // Do nothing in the timer tick to avoid annoying popups
+                // Handle error display for the ListView
+                lstChatHistory.Items.Clear();
+                var errorItem = new ListViewItem("Error");
+                errorItem.SubItems.Add("");
+                errorItem.SubItems.Add($"Error loading conversation: {ex.Message}");
+                lstChatHistory.Items.Add(errorItem);
             }
         }
 
@@ -119,9 +113,6 @@ namespace SecureMessenger.UI
             if (lstUsers.SelectedItem != null)
             {
                 _selectedChatUser = lstUsers.SelectedItem.ToString();
-
-                // --- THIS IS THE CORRECTED PART ---
-                // We now clear the ListBox and show a loading message in it.
                 lstChatHistory.Items.Clear();
                 lstChatHistory.Items.Add("Loading conversation...");
 
@@ -175,40 +166,31 @@ namespace SecureMessenger.UI
             }
         }
 
-        // --- NEW AND CORRECTED METHODS FOR EDIT/DELETE ---
-        private void lstChatHistory_DrawItem(object sender, DrawItemEventArgs e)
-        {
-            if (e.Index < 0) return;
-            var item = lstChatHistory.Items[e.Index] as ChatMessageDisplay;
-            if (item == null) return;
-
-            e.DrawBackground();
-            TextRenderer.DrawText(e.Graphics, item.DisplayText, e.Font, e.Bounds, Color.Black, TextFormatFlags.Left | TextFormatFlags.WordBreak);
-            e.DrawFocusRectangle();
-        }
-
         private void contextMenuStrip1_Opening(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            // If nothing is selected in the chat history, don't show the menu.
-            if (lstChatHistory.SelectedItem == null)
+            // Use SelectedItems.Count for ListView
+            if (lstChatHistory.SelectedItems.Count == 0)
             {
-                e.Cancel = true; // This line stops the menu from appearing.
+                e.Cancel = true; // Stop the menu from appearing
                 return;
             }
 
-            var selectedMessageDisplay = lstChatHistory.SelectedItem as ChatMessageDisplay;
-            if (selectedMessageDisplay == null)
+            // Get the item from the SelectedItems collection and get the object from its Tag
+            var selectedItem = lstChatHistory.SelectedItems[0];
+            var messageToDelete = selectedItem.Tag as SecureMessenger.Core.Models.Message;
+
+            if (messageToDelete == null)
             {
                 e.Cancel = true;
                 return;
             }
 
-            // Only enable the "Delete Message" option if the message was sent by the logged-in user.
-            bool isMyMessage = selectedMessageDisplay.OriginalMessage.SenderUsername == _loggedInUsername;
+            // Only enable "Delete" if the message was sent by the logged-in user
+            bool isMyMessage = messageToDelete.SenderUsername == _loggedInUsername;
 
-            // The first item (index 0) is "Edit Message", the second (index 1) is "Delete Message".
-            contextMenuStrip1.Items[0].Enabled = false; // "Edit Message" is always disabled for now.
-            contextMenuStrip1.Items[1].Enabled = isMyMessage; // "Delete Message" is only enabled if it's your message.
+            // Index 0 is "Edit", Index 1 is "Delete"
+            contextMenuStrip1.Items[0].Enabled = false; // Edit is disabled for now
+            contextMenuStrip1.Items[1].Enabled = isMyMessage;
         }
 
         private void editMessageToolStripMenuItem_Click(object sender, EventArgs e)
@@ -218,12 +200,18 @@ namespace SecureMessenger.UI
 
         private void deleteMessageToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var selectedMessageDisplay = lstChatHistory.SelectedItem as ChatMessageDisplay;
-            if (selectedMessageDisplay == null) return;
+            if (lstChatHistory.SelectedItems.Count == 0) return;
+
+            // Get the selected item and its associated message object from the Tag
+            var selectedItem = lstChatHistory.SelectedItems[0];
+            var messageToDelete = selectedItem.Tag as SecureMessenger.Core.Models.Message;
+
+            if (messageToDelete == null) return;
+
             var result = MessageBox.Show("Are you sure you want to permanently delete this message?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
             if (result == DialogResult.Yes)
             {
-                bool success = _messageService.DeleteMessage(selectedMessageDisplay.OriginalMessage.Id, _loggedInUsername);
+                bool success = _messageService.DeleteMessage(messageToDelete.Id, _loggedInUsername);
                 if (success)
                 {
                     LoadConversation();
@@ -240,13 +228,54 @@ namespace SecureMessenger.UI
             // We only care about right-clicks
             if (e.Button == MouseButtons.Right)
             {
-                // Figure out which item in the list is under the mouse cursor
-                int index = this.lstChatHistory.IndexFromPoint(e.Location);
+                // Use GetItemAt for ListView to find the item under the cursor
+                var item = lstChatHistory.GetItemAt(e.X, e.Y);
 
                 // If the cursor is over a valid item, select it.
-                if (index != ListBox.NoMatches)
+                if (item != null)
                 {
-                    this.lstChatHistory.SelectedIndex = index;
+                    item.Selected = true;
+                }
+            }
+        }
+
+        private void btnDeleteMessage_Click(object sender, EventArgs e)
+        {
+            // Checks if any item is selected in the ListView
+            if (lstChatHistory.SelectedItems.Count == 0)
+            {
+                MessageBox.Show("Please select a message to delete.", "No Message Selected", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Gets the first selected item from the .SelectedItems collection
+            var selectedItem = lstChatHistory.SelectedItems[0];
+
+            // Uses the full name to avoid ambiguity with System.Windows.Forms.Message
+            var messageToDelete = selectedItem.Tag as SecureMessenger.Core.Models.Message;
+
+            if (messageToDelete == null) return;
+
+            if (messageToDelete.SenderUsername != _loggedInUsername)
+            {
+                MessageBox.Show("You can only delete messages that you have sent.", "Delete Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            var confirmResult = MessageBox.Show("Are you sure you want to delete this message?", "Confirm Delete", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            if (confirmResult == DialogResult.Yes)
+            {
+                // Calls the service layer with the correct parameters
+                bool success = _messageService.DeleteMessage(messageToDelete.Id, _loggedInUsername);
+
+                if (success)
+                {
+                    LoadConversation(); // Refresh the chat
+                }
+                else
+                {
+                    MessageBox.Show("Failed to delete the message.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
