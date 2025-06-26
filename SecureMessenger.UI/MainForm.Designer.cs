@@ -39,11 +39,7 @@
             contextMenuStrip1 = new ContextMenuStrip(components);
             editMessageToolStripMenuItem = new ToolStripMenuItem();
             deleteMessageToolStripMenuItem = new ToolStripMenuItem();
-            lstChatHistory = new ListView();
-            Timestamp = new ColumnHeader();
-            Sender = new ColumnHeader();
-            Message = new ColumnHeader();
-            btnDeleteMessage = new Button();
+            lstChatHistory = new ListBox();
             menuStrip1.SuspendLayout();
             statusStrip1.SuspendLayout();
             contextMenuStrip1.SuspendLayout();
@@ -95,7 +91,7 @@
             // 
             txtMessageInput.Location = new Point(12, 393);
             txtMessageInput.Name = "txtMessageInput";
-            txtMessageInput.Size = new Size(631, 27);
+            txtMessageInput.Size = new Size(703, 27);
             txtMessageInput.TabIndex = 5;
             // 
             // btnSendMessage
@@ -132,42 +128,20 @@
             // 
             // lstChatHistory
             // 
-            lstChatHistory.Columns.AddRange(new ColumnHeader[] { Timestamp, Sender, Message });
+            lstChatHistory.ContextMenuStrip = contextMenuStrip1;
+            lstChatHistory.DrawMode = DrawMode.OwnerDrawFixed;
+            lstChatHistory.FormattingEnabled = true;
             lstChatHistory.Location = new Point(157, 31);
             lstChatHistory.Name = "lstChatHistory";
-            lstChatHistory.Size = new Size(631, 342);
-            lstChatHistory.TabIndex = 7;
-            lstChatHistory.UseCompatibleStateImageBehavior = false;
-            lstChatHistory.View = View.Details;
-            // 
-            // Timestamp
-            // 
-            Timestamp.Width = 100;
-            // 
-            // Sender
-            // 
-            Sender.Width = 100;
-            // 
-            // Message
-            // 
-            Message.Width = 800;
-            // 
-            // btnDeleteMessage
-            // 
-            btnDeleteMessage.Location = new Point(649, 392);
-            btnDeleteMessage.Name = "btnDeleteMessage";
-            btnDeleteMessage.Size = new Size(67, 29);
-            btnDeleteMessage.TabIndex = 8;
-            btnDeleteMessage.Text = "Delete";
-            btnDeleteMessage.UseVisualStyleBackColor = true;
-            btnDeleteMessage.Click += btnDeleteMessage_Click;
+            lstChatHistory.Size = new Size(631, 344);
+            lstChatHistory.TabIndex = 9;
+            lstChatHistory.DrawItem += lstChatHistory_DrawItem;
             // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
-            Controls.Add(btnDeleteMessage);
             Controls.Add(lstChatHistory);
             Controls.Add(btnSendMessage);
             Controls.Add(txtMessageInput);
@@ -199,10 +173,6 @@
         private ContextMenuStrip contextMenuStrip1;
         private ToolStripMenuItem editMessageToolStripMenuItem;
         private ToolStripMenuItem deleteMessageToolStripMenuItem;
-        private ListView lstChatHistory;
-        private ColumnHeader Timestamp;
-        private ColumnHeader Sender;
-        private ColumnHeader Message;
-        private Button btnDeleteMessage;
+        private ListBox lstChatHistory;
     }
 }
