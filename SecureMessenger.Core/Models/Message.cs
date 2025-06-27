@@ -11,5 +11,6 @@ namespace SecureMessenger.Core.Models
         public byte[] SenderEphemeralKey { get; set; }
         public byte[] Ciphertext { get; set; }
         public DateTime Timestamp { get; set; }
+        public bool IsEdited { get; set; }
     }
 }

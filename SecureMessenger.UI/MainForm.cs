@@ -70,6 +70,9 @@ namespace SecureMessenger.UI
 
             try
             {
+                var allUsers = _userDataService.GetAllUsers();
+                var userMap = allUsers.ToDictionary(u => Convert.ToBase64String(u.IdentityPublicKey));
+
                 var messagesToMe = _messageService.GetMessagesForUser(_loggedInUsername);
                 var messagesToThem = _messageService.GetMessagesForUser(_selectedChatUser);
 
@@ -77,7 +80,8 @@ namespace SecureMessenger.UI
                     .Concat(messagesToThem)
                     .Where(m =>
                     {
-                        var senderUsername = _messageService.GetSenderUsernameFromMessage(m);
+                        // --- FIX WAS HERE --- Renamed 'sender' to 'foundSender'
+                        string senderUsername = userMap.TryGetValue(Convert.ToBase64String(m.SenderIdentityKey), out var foundSender) ? foundSender.Username : "Unknown";
                         return (senderUsername == _loggedInUsername && m.RecipientUsername == _selectedChatUser) ||
                                (senderUsername == _selectedChatUser && m.RecipientUsername == _loggedInUsername);
                     })
@@ -88,19 +92,25 @@ namespace SecureMessenger.UI
                 foreach (var message in fullConversation)
                 {
                     string decryptedText = _messageService.DecryptMessage(message, _loggedInUsername, _authService);
-                    string senderUsername = _messageService.GetSenderUsernameFromMessage(message);
+                    // --- FIX WAS HERE --- Renamed 'sender' to 'foundSender'
+                    string senderUsername = userMap.TryGetValue(Convert.ToBase64String(message.SenderIdentityKey), out var foundSender) ? foundSender.Username : "Unknown";
                     string prefix = senderUsername == _loggedInUsername ? "You" : senderUsername;
                     string displayText = $"[{message.Timestamp:G}] {prefix}: {decryptedText}";
                     newItems.Add(new ChatMessageDisplay(message, displayText));
                 }
 
-                var currentIds = lstChatHistory.Items.Cast<ChatMessageDisplay>().Where(item => item.OriginalMessage != null).Select(item => item.OriginalMessage.Id);
+                var currentIds = lstChatHistory.Items.Cast<ChatMessageDisplay>().Where(i => i.OriginalMessage != null).Select(item => item.OriginalMessage.Id);
                 var newIds = newItems.Select(item => item.OriginalMessage.Id);
 
                 if (!currentIds.SequenceEqual(newIds))
                 {
+                    int selectedIndex = lstChatHistory.SelectedIndex;
                     lstChatHistory.Items.Clear();
                     foreach (var item in newItems) lstChatHistory.Items.Add(item);
+                    if (selectedIndex != -1 && selectedIndex < lstChatHistory.Items.Count)
+                    {
+                        lstChatHistory.SelectedIndex = selectedIndex;
+                    }
                 }
             }
             catch (Exception) { /* Fail silently */ }
@@ -160,7 +170,6 @@ namespace SecureMessenger.UI
             }
         }
 
-        // --- Other UI methods like DrawItem, MouseDown, etc. go here ---
         private void lstChatHistory_DrawItem(object sender, DrawItemEventArgs e)
         {
             if (e.Index < 0) return;
@@ -195,7 +204,12 @@ namespace SecureMessenger.UI
             {
                 e.Cancel = true; return;
             }
-            var senderUsername = _messageService.GetSenderUsernameFromMessage(selectedMessageDisplay.OriginalMessage);
+
+            var allUsers = _userDataService.GetAllUsers();
+            var userMap = allUsers.ToDictionary(u => Convert.ToBase64String(u.IdentityPublicKey));
+
+            string senderUsername = userMap.TryGetValue(Convert.ToBase64String(selectedMessageDisplay.OriginalMessage.SenderIdentityKey), out var foundSender) ? foundSender.Username : "Unknown";
+
             bool isMyMessage = senderUsername == _loggedInUsername;
 
             contextMenuStrip1.Items[0].Enabled = false; // Edit is disabled

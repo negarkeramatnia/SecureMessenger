@@ -106,6 +106,36 @@ namespace SecureMessenger.Core.Services
             return usernames;
         }
 
-        // We no longer need a DeleteUserByUsername method for our new logic.
+        public List<User> GetAllUsers()
+        {
+            var users = new List<User>();
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                // This single query gets all the user data we need.
+                string sql = "SELECT * FROM Users";
+                using (var command = new SqlCommand(sql, connection))
+                {
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            users.Add(new User
+                            {
+                                Id = (int)reader["Id"],
+                                Username = (string)reader["Username"],
+                                PasswordHash = (string)reader["PasswordHash"],
+                                Salt = (byte[])reader["Salt"],
+                                IdentityPublicKey = (byte[])reader["IdentityPublicKey"],
+                                EncryptedIdentityKey = (byte[])reader["EncryptedIdentityKey"],
+                                PrivateKeyNonce = (byte[])reader["PrivateKeyNonce"],
+                                PrivateKeyAuthTag = (byte[])reader["PrivateKeyAuthTag"]
+                            });
+                        }
+                    }
+                }
+            }
+            return users;
+        }
     }
 }

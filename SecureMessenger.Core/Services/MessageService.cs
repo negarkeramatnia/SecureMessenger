@@ -77,23 +77,23 @@ namespace SecureMessenger.Core.Services
 
         public bool DeleteMessage(int messageId, string currentUsername)
         {
+            // First, fetch the message to perform a security check.
             var messageToDelete = _messageDataService.GetMessageById(messageId);
-            var senderUsername = GetSenderUsernameFromMessage(messageToDelete);
+            if (messageToDelete == null) return false;
 
-            if (messageToDelete != null && senderUsername == currentUsername)
+            // Now, find out who the sender was by their public identity key.
+            // This is inefficient but secure.
+            var allUsers = _userDataService.GetAllUsers();
+            var sender = allUsers.FirstOrDefault(u => u.IdentityPublicKey.SequenceEqual(messageToDelete.SenderIdentityKey));
+
+            // Security Check: Only delete if the sender's username matches the current user.
+            if (sender != null && sender.Username == currentUsername)
             {
                 _messageDataService.DeleteMessage(messageId);
                 return true;
             }
-            return false;
-        }
 
-        public string GetSenderUsernameFromMessage(Message message)
-        {
-            if (message == null) return "Unknown";
-            var allUsers = _userDataService.GetAllUsernames().Select(u => _userDataService.GetUserByUsername(u)).ToList();
-            var sender = allUsers.FirstOrDefault(u => u.IdentityPublicKey.SequenceEqual(message.SenderIdentityKey));
-            return sender?.Username ?? "Unknown";
+            return false;
         }
     }
 }
