@@ -1,5 +1,4 @@
-﻿// In SecureMessenger.Core/Services/MessageService.cs
-using SecureMessenger.Core.Models;
+﻿using SecureMessenger.Core.Models;
 using System;
 using System.Collections.Generic;
 using System.Security;
@@ -14,7 +13,6 @@ namespace SecureMessenger.Core.Services
         private readonly UserDataService _userDataService;
         private readonly MessageDataService _messageDataService;
 
-        // Pass the AuthService instance in the constructor
         public MessageService()
         {
             _cryptoService = new CryptoService();
@@ -115,35 +113,27 @@ namespace SecureMessenger.Core.Services
             return _messageDataService.GetConversation(user1, user2);
         }
 
-        // Replace the old, empty EditMessage method with this one
         public bool EditMessage(int messageId, string newText, string currentUsername, AuthService authService)
         {
-            // 1. Fetch the original message from the database
             var messageToEdit = _messageDataService.GetMessageById(messageId);
 
-            // 2. Security Check: Only the original sender can edit their message.
             if (messageToEdit == null || messageToEdit.SenderUsername != currentUsername)
             {
                 return false;
             }
 
-            // 3. Get the current user's private key from the active session
             byte[] currentUserPrivateKey = authService.GetCurrentUserPrivateKey();
             if (currentUserPrivateKey == null) return false;
 
             try
             {
-                // 4. Decrypt the original symmetric message key using the sender's private key
                 byte[] messageKey = _cryptoService.RsaDecrypt(currentUserPrivateKey, messageToEdit.EncryptedMessageKeyForSender);
 
-                // 5. Re-encrypt the NEW message text with the OLD symmetric key
                 var newPlaintextBytes = Encoding.UTF8.GetBytes(newText);
                 var (newCiphertext, newNonce, newAuthTag) = _cryptoService.EncryptWithAesGcm(messageKey, newPlaintextBytes);
 
-                // 6. Clear the sensitive key from memory
                 Array.Clear(messageKey, 0, messageKey.Length);
 
-                // 7. Call the data service to update the database with the new encrypted content
                 return _messageDataService.UpdateMessage(messageId, newCiphertext, newNonce, newAuthTag);
             }
             catch (Exception ex)
@@ -155,17 +145,12 @@ namespace SecureMessenger.Core.Services
         
         public bool DeleteMessage(int messageId, string currentUsername)
         {
-            // First, fetch the specific message by its ID to perform a security check.
             var messageToDelete = _messageDataService.GetMessageById(messageId);
 
-            // Security Check: Ensure the message exists AND the user trying to delete it is the original sender.
             if (messageToDelete != null && messageToDelete.SenderUsername == currentUsername)
             {
-                // If the check passes, delete the message from the database.
                 return _messageDataService.DeleteMessage(messageId, currentUsername);
             }
-
-            // If the check fails, do not delete the message.
             return false;
         }
     }

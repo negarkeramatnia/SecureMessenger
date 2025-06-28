@@ -13,6 +13,6 @@ namespace SecureMessenger.Core.Models
         public byte[] EncryptedMessageKeyForSender { get; set; }
         public byte[] EncryptedMessageKeyForRecipient { get; set; }
         public DateTime Timestamp { get; set; }
-        public bool IsEdited { get; set; } // The new property
+        public bool IsEdited { get; set; }
     }
 }

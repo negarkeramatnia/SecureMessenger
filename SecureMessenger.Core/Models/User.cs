@@ -1,5 +1,4 @@
-﻿// In SecureMessenger.Core/Models/User.cs
-namespace SecureMessenger.Core.Models
+﻿namespace SecureMessenger.Core.Models
 {
     public class User
     {

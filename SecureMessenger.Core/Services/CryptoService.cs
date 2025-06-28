@@ -1,5 +1,4 @@
-﻿// In SecureMessenger.Core/Services/CryptoService.cs
-using System;
+﻿using System;
 using System.Security.Cryptography;
 
 namespace SecureMessenger.Core.Services

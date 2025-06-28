@@ -10,7 +10,6 @@ namespace SecureMessenger.Core.Services
     {
         private readonly string _connectionString;
 
-        // This is the new constructor that builds the correct path.
         public MessageDataService()
         {
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
@@ -139,7 +138,6 @@ namespace SecureMessenger.Core.Services
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                // We only allow the sender to delete the message.
                 string sql = "DELETE FROM Messages WHERE Id = @MessageId AND SenderUsername = @Username";
                 using (var command = new SqlCommand(sql, connection))
                 {

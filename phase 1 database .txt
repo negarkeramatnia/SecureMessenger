@@ -1,0 +1,28 @@
+phase 1 database: 
+CREATE TABLE [dbo].[Messages] (
+    [Id]                              INT             IDENTITY (1, 1) NOT NULL,
+    [SenderUsername]                  NVARCHAR (50)   NOT NULL,
+    [RecipientUsername]               NVARCHAR (50)   NOT NULL,
+    [Ciphertext]                      VARBINARY (MAX) NOT NULL,
+    [Nonce]                           VARBINARY (16)  NOT NULL,
+    [AuthTag]                         VARBINARY (16)  NOT NULL,
+    [EncryptedMessageKeyForSender]    VARBINARY (MAX) NOT NULL,
+    [EncryptedMessageKeyForRecipient] VARBINARY (MAX) NOT NULL,
+    [Timestamp]                       DATETIME2 (7)   NOT NULL,
+    [IsEdited]                        BIT             DEFAULT ((0)) NOT NULL,
+    PRIMARY KEY CLUSTERED ([Id] ASC)
+);
+
+CREATE TABLE [dbo].[Users] (
+    [Id]                  INT             IDENTITY (1, 1) NOT NULL,
+    [Username]            NVARCHAR (50)   NOT NULL,
+    [PasswordHash]        NVARCHAR (256)  NOT NULL,
+    [Salt]                VARBINARY (32)  NOT NULL,
+    [PublicKey]           VARBINARY (MAX) NOT NULL,
+    [EncryptedPrivateKey] VARBINARY (MAX) NOT NULL,
+    [PrivateKeyNonce]     VARBINARY (16)  NOT NULL,
+    [PrivateKeyAuthTag]   VARBINARY (16)  NOT NULL,
+    PRIMARY KEY CLUSTERED ([Id] ASC),
+    UNIQUE NONCLUSTERED ([Username] ASC)
+);
+

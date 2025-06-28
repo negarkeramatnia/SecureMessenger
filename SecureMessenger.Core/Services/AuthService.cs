@@ -1,5 +1,4 @@
-﻿// In SecureMessenger.Core/Services/AuthService.cs
-using SecureMessenger.Core.Models;
+﻿using SecureMessenger.Core.Models;
 using System;
 using System.Security.Cryptography;
 
@@ -7,7 +6,6 @@ namespace SecureMessenger.Core.Services
 {
     public class AuthService
     {
-        // --- NEW: This will hold the key for the current session ---
         private byte[] _currentUserDecryptedPrivateKey;
 
         private readonly CryptoService _cryptoService;
@@ -51,7 +49,6 @@ namespace SecureMessenger.Core.Services
             };
         }
 
-        // --- MODIFIED: Login now returns bool and saves the key internally ---
         public bool Login(string password, User storedUser)
         {
             if (!_cryptoService.VerifyPassword(password, storedUser.Salt, storedUser.PasswordHash))
@@ -84,13 +81,11 @@ namespace SecureMessenger.Core.Services
             }
         }
 
-        // --- NEW: A method to get the current session's key ---
         public byte[] GetCurrentUserPrivateKey()
         {
             return _currentUserDecryptedPrivateKey;
         }
 
-        // --- NEW: A method to log out and clear the key ---
         public void Logout()
         {
             if (_currentUserDecryptedPrivateKey != null)
