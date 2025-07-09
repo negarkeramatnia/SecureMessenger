@@ -37,6 +37,7 @@ namespace SecureMessenger.Core.Services
                     command.Parameters.AddWithValue("@Timestamp", message.Timestamp);
 
                     int rowsAffected = command.ExecuteNonQuery();
+                    //meaning the save was successfu
                     return rowsAffected > 0;
                 }
             }
@@ -71,7 +72,6 @@ namespace SecureMessenger.Core.Services
                                 EncryptedMessageKeyForSender = (byte[])reader["EncryptedMessageKeyForSender"],
                                 EncryptedMessageKeyForRecipient = (byte[])reader["EncryptedMessageKeyForRecipient"],
                                 Timestamp = (DateTime)reader["Timestamp"],
-                                // --- ADDED THIS LINE ---
                                 IsEdited = (bool)reader["IsEdited"]
                             });
                         }

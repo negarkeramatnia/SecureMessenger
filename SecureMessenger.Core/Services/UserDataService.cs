@@ -1,6 +1,7 @@
 ﻿using SecureMessenger.Core.Models;
 using System;
 using System.Data.SqlClient;
+using System.Collections.Generic; // Required for using List<string>
 using System.IO;
 
 namespace SecureMessenger.Core.Services
@@ -11,7 +12,6 @@ namespace SecureMessenger.Core.Services
 
         public UserDataService()
         {
-            // This finds the path
             string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
             string projectRoot = Path.GetFullPath(Path.Combine(baseDirectory, @"..\..\.."));
             string dbFilePath = Path.Combine(projectRoot, "MessengerDatabase.mdf");
@@ -28,6 +28,7 @@ namespace SecureMessenger.Core.Services
                 {
                     command.Parameters.AddWithValue("@Username", username);
                     int count = (int)command.ExecuteScalar();
+                    //meaning the user exists
                     return count > 0;
                 }
             }
@@ -86,6 +87,7 @@ namespace SecureMessenger.Core.Services
                 }
             }
         }
+        // It's used to populate the user list in the main chat window
         public List<string> GetAllUsernames()
         {
             var usernames = new List<string>();
@@ -106,18 +108,18 @@ namespace SecureMessenger.Core.Services
             }
             return usernames;
         }
-        public void DeleteUserByUsername(string username)
-        {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                connection.Open();
-                string sql = "DELETE FROM Users WHERE Username = @Username";
-                using (var command = new SqlCommand(sql, connection))
-                {
-                    command.Parameters.AddWithValue("@Username", username);
-                    command.ExecuteNonQuery();
-                }
-            }
-        }
+        //public void DeleteUserByUsername(string username)
+        //{
+        //    using (var connection = new SqlConnection(_connectionString))
+        //    {
+        //        connection.Open();
+        //        string sql = "DELETE FROM Users WHERE Username = @Username";
+        //        using (var command = new SqlCommand(sql, connection))
+        //        {
+        //            command.Parameters.AddWithValue("@Username", username);
+        //            command.ExecuteNonQuery();
+        //        }
+        //    }
+        //}
     }
 }

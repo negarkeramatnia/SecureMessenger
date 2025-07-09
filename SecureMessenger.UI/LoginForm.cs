@@ -9,20 +9,19 @@ namespace SecureMessenger.UI
         private readonly AuthService _authService;
         private readonly UserDataService _userDataService;
 
+        //public variables that other parts of the application can read. after login, this property will store the username
         public string LoggedInUsername { get; private set; }
 
-        // MODIFIED: Constructor now accepts an AuthService
         public LoginForm(AuthService authService)
         {
             InitializeComponent();
             _authService = authService;
             _userDataService = new UserDataService();
         }
-        public byte[] LoggedInUserPrivateKey { get; private set; }
 
         private void btnLogin_Click(object sender, EventArgs e)
         {
-            string username = txtUsername.Text.Trim();
+            string username = txtUsername.Text;
             string password = txtPassword.Text;
             
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
@@ -33,6 +32,7 @@ namespace SecureMessenger.UI
 
             try
             {
+                //use our UserDataService to find the user's data in the database
                 var userDataService = new UserDataService();
                 var storedUser = userDataService.GetUserByUsername(username);
 
@@ -42,15 +42,13 @@ namespace SecureMessenger.UI
                     return;
                 }
 
-                // --- THIS IS THE CORRECTED PART ---
                 // Login now returns 'true' on success, not the private key.
                 if (_authService.Login(password, storedUser))
                 {
                     // Login successful!
                     MessageBox.Show($"Welcome, {username}!", "Login Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    //store the username in our public property so Program.cs can access it
                     LoggedInUsername = username;
-
-                    // We no longer get the key here, so delete the old LoggedInUserPrivateKey line.
 
                     this.DialogResult = DialogResult.OK;
                     this.Close();
@@ -72,15 +70,16 @@ namespace SecureMessenger.UI
             // Open the registration form as a dialog
             using (var registrationForm = new RegistrationForm())
             {
-                this.Hide(); // Hide the login form while registration is open
+                //hide the login form while registration is open
+                this.Hide();
                 registrationForm.ShowDialog();
-                this.Show(); // Show the login form again when registration is done
+                //show the login form again when registration is done
+                this.Show(); 
             }
         }
 
         private void btnExit_Click(object sender, EventArgs e)
         {
-            // Exit the entire application
             Application.Exit();
         }
     }

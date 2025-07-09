@@ -22,6 +22,7 @@ namespace SecureMessenger.Core.Services
 
         public bool SendMessage(string senderUsername, string recipientUsername, string plaintextMessage, AuthService authService)
         {
+            //needed to get their public key
             var senderUser = _userDataService.GetUserByUsername(senderUsername);
             var recipientUser = _userDataService.GetUserByUsername(recipientUsername);
 
@@ -29,15 +30,15 @@ namespace SecureMessenger.Core.Services
 
             try
             {
-                FileLogger.Log($"--- SENDING from {senderUsername} to {recipientUsername} ---");
-                FileLogger.Log($"[SEND] Encrypting for RECIPIENT ({recipientUser.Username}) using PubKey: {Convert.ToBase64String(recipientUser.PublicKey).Substring(0, 10)}...");
-                FileLogger.Log($"[SEND] Encrypting for SENDER ({senderUser.Username}) using PubKey: {Convert.ToBase64String(senderUser.PublicKey).Substring(0, 10)}...");
-
+                //AES
                 byte[] messageKey = _cryptoService.GenerateSymmetricKey();
+                //convert into an array of bytes      needed for encryption
                 var plaintextBytes = Encoding.UTF8.GetBytes(plaintextMessage);
                 var (ciphertext, nonce, tag) = _cryptoService.EncryptWithAesGcm(messageKey, plaintextBytes);
 
+                //encrypt the message key using the RECIPIENT's public RSA key
                 byte[] encryptedKeyForRecipient = _cryptoService.RsaEncrypt(recipientUser.PublicKey, messageKey);
+                //encrypt the message key again, this time using the SENDER's public RSA key
                 byte[] encryptedKeyForSender = _cryptoService.RsaEncrypt(senderUser.PublicKey, messageKey);
 
                 Array.Clear(messageKey, 0, messageKey.Length);
@@ -58,27 +59,21 @@ namespace SecureMessenger.Core.Services
             }
             catch (Exception ex)
             {
-                FileLogger.Log($"[SEND] FAILED with exception: {ex.Message}");
                 return false;
             }
         }
 
         public string DecryptMessage(Message message, string currentUsername, AuthService authService)
         {
-            FileLogger.Log($"--- DECRYPTING message for {currentUsername} ---");
             var currentUser = _userDataService.GetUserByUsername(currentUsername);
-            if (currentUser != null)
-            {
-                FileLogger.Log($"[DECRYPT] Using private key that corresponds to PubKey: {Convert.ToBase64String(currentUser.PublicKey).Substring(0, 10)}...");
-            }
 
             byte[] currentUserPrivateKey = authService.GetCurrentUserPrivateKey();
             if (currentUserPrivateKey == null)
             {
-                FileLogger.Log("[DECRYPT] FAILED: Current user's private key is not available in AuthService.");
                 return "[Decryption Error: User session invalid]";
             }
 
+            //this logic decides which encrypted key to use for decryption
             byte[] encryptedMessageKeyToUse;
             if (message.SenderUsername == currentUsername)
             {
@@ -95,7 +90,9 @@ namespace SecureMessenger.Core.Services
 
             try
             {
+                //use the user's private RSA key for message key
                 byte[] messageKey = _cryptoService.RsaDecrypt(currentUserPrivateKey, encryptedMessageKeyToUse);
+                //use the decrypted message key to decrypt the actual message content
                 byte[] plaintextBytes = _cryptoService.DecryptWithAesGcm(messageKey, message.Nonce, message.Ciphertext, message.AuthTag);
 
                 Array.Clear(messageKey, 0, messageKey.Length);
@@ -103,11 +100,10 @@ namespace SecureMessenger.Core.Services
             }
             catch (CryptographicException ex)
             {
-                FileLogger.Log($"[DECRYPT] FAILED with CryptographicException: {ex.Message}");
                 return "[Unable to decrypt message - data may be corrupt]";
             }
         }
-
+        //a simple helper method that just asks the data service to get the conversation history
         public List<Message> GetConversation(string user1, string user2)
         {
             return _messageDataService.GetConversation(user1, user2);
@@ -122,11 +118,13 @@ namespace SecureMessenger.Core.Services
                 return false;
             }
 
+            //get the private key of the logged in user
             byte[] currentUserPrivateKey = authService.GetCurrentUserPrivateKey();
             if (currentUserPrivateKey == null) return false;
 
             try
             {
+                //decrypt message key
                 byte[] messageKey = _cryptoService.RsaDecrypt(currentUserPrivateKey, messageToEdit.EncryptedMessageKeyForSender);
 
                 var newPlaintextBytes = Encoding.UTF8.GetBytes(newText);
@@ -138,7 +136,6 @@ namespace SecureMessenger.Core.Services
             }
             catch (Exception ex)
             {
-                FileLogger.Log($"[EDIT] FAILED with exception: {ex.Message}");
                 return false;
             }
         }

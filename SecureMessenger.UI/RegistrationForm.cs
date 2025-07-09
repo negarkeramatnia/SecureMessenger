@@ -7,16 +7,18 @@ namespace SecureMessenger.UI
     public partial class RegistrationForm : Form
     {
         private readonly AuthService _authService;
-
+        //Constructor
         public RegistrationForm()
         {
             InitializeComponent();
+            //new instance of AuthService that needs a CryptoService
             _authService = new AuthService(new CryptoService());
         }
 
         private void btnRegister_Click(object sender, EventArgs e)
         {
-            string username = txtUsername.Text.Trim();
+            // Get the text from the username textbox
+            string username = txtUsername.Text;
             string password = txtPassword.Text;
             string confirmPassword = txtConfirmPassword.Text;
 
@@ -34,15 +36,17 @@ namespace SecureMessenger.UI
 
             try
             {
+                //returns a complete User object
                 var newUser = _authService.RegisterUser(username, password);
-
+                //if the username is already taken
                 if (newUser == null)
                 {
                     MessageBox.Show("Registration failed for an unknown reason.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    //set the form's result to None so it doesn't close automatically
                     this.DialogResult = DialogResult.None;
                     return;
                 }
-
+                //create a new instance of our database
                 var userDataService = new UserDataService();
                 bool success = userDataService.CreateUser(newUser);
 

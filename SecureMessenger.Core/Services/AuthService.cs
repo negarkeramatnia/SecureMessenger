@@ -1,19 +1,25 @@
 ﻿using SecureMessenger.Core.Models;
 using System;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace SecureMessenger.Core.Services
 {
     public class AuthService
     {
+        // holds the current user's decrypted private key in memory.
         private byte[] _currentUserDecryptedPrivateKey;
 
+        //referenceS
         private readonly CryptoService _cryptoService;
+        //handle saving and loading user data
         private readonly UserDataService _userDataService;
 
+        //method that runs once when a new instance of AuthService is created
         public AuthService(CryptoService cryptoService)
         {
             _cryptoService = cryptoService;
+            //creates a new instance of the UserDataService for talkin
             _userDataService = new UserDataService();
         }
 
@@ -21,22 +27,24 @@ namespace SecureMessenger.Core.Services
         {
             if (_userDataService.UserExists(username))
             {
-                FileLogger.Log($"[REGISTER] Warning: User '{username}' already exists.");
                 return null;
             }
 
             byte[] salt = _cryptoService.GenerateSalt();
             string passwordHash = _cryptoService.HashPassword(password, salt);
+
+            //private key encryption
+            //public and private RSA key pair for the user for encrypting messages
             var (publicKey, privateKeyRaw) = _cryptoService.GenerateRsaKeyPair();
-
-            FileLogger.Log($"[REGISTER] Generated Public Key for {username} starts with: {Convert.ToBase64String(publicKey).Substring(0, 10)}...");
-
+            //temporary encryption key directly from the user's password and salt
             byte[] privateKeyEncryptionKey = _cryptoService.DeriveKeyFromPassword(password, salt);
+
+            //encrypt the private key using AES with the derived key
             var (encryptedPkBytes, pkNonce, pkTag) = _cryptoService.EncryptWithAesGcm(privateKeyEncryptionKey, privateKeyRaw);
 
             Array.Clear(privateKeyEncryptionKey, 0, privateKeyEncryptionKey.Length);
             Array.Clear(privateKeyRaw, 0, privateKeyRaw.Length);
-
+            //new User object
             return new User
             {
                 Username = username,
@@ -51,9 +59,9 @@ namespace SecureMessenger.Core.Services
 
         public bool Login(string password, User storedUser)
         {
+            //entered password =? hash stored in the database
             if (!_cryptoService.VerifyPassword(password, storedUser.Salt, storedUser.PasswordHash))
             {
-                FileLogger.Log($"[LOGIN] FAILED for user '{storedUser.Username}' due to wrong password.");
                 return false;
             }
 
@@ -67,12 +75,10 @@ namespace SecureMessenger.Core.Services
                     storedUser.PrivateKeyAuthTag
                 );
 
-                FileLogger.Log($"[LOGIN] User '{storedUser.Username}' logged in. Their Public Key starts with: {Convert.ToBase64String(storedUser.PublicKey).Substring(0, 10)}...");
                 return true;
             }
             catch (CryptographicException ex)
             {
-                FileLogger.Log($"[LOGIN] FAILED for user '{storedUser.Username}'. Private key decryption failed: {ex.Message}");
                 return false;
             }
             finally
@@ -81,6 +87,7 @@ namespace SecureMessenger.Core.Services
             }
         }
 
+        //get the private key
         public byte[] GetCurrentUserPrivateKey()
         {
             return _currentUserDecryptedPrivateKey;

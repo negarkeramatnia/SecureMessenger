@@ -66,7 +66,6 @@
             label3.Size = new Size(73, 20);
             label3.TabIndex = 2;
             label3.Text = "Password:";
-            //label3.Click += label3_Click;
             // 
             // label4
             // 
@@ -81,7 +80,7 @@
             // 
             txtUsername.Location = new Point(21, 105);
             txtUsername.Name = "txtUsername";
-            txtUsername.Size = new Size(125, 27);
+            txtUsername.Size = new Size(186, 27);
             txtUsername.TabIndex = 4;
             // 
             // txtPassword
@@ -89,7 +88,7 @@
             txtPassword.Location = new Point(21, 202);
             txtPassword.Name = "txtPassword";
             txtPassword.PasswordChar = '*';
-            txtPassword.Size = new Size(125, 27);
+            txtPassword.Size = new Size(186, 27);
             txtPassword.TabIndex = 5;
             // 
             // txtConfirmPassword
@@ -97,7 +96,7 @@
             txtConfirmPassword.Location = new Point(21, 307);
             txtConfirmPassword.Name = "txtConfirmPassword";
             txtConfirmPassword.PasswordChar = '*';
-            txtConfirmPassword.Size = new Size(125, 27);
+            txtConfirmPassword.Size = new Size(186, 27);
             txtConfirmPassword.TabIndex = 6;
             // 
             // btnCancel

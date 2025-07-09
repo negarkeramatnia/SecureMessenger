@@ -56,13 +56,12 @@
             label2.Size = new Size(78, 20);
             label2.TabIndex = 1;
             label2.Text = "Username:";
-            //label2.Click += label2_Click;
             // 
             // txtUsername
             // 
             txtUsername.Location = new Point(33, 127);
             txtUsername.Name = "txtUsername";
-            txtUsername.Size = new Size(125, 27);
+            txtUsername.Size = new Size(164, 27);
             txtUsername.TabIndex = 2;
             // 
             // label3
@@ -79,7 +78,7 @@
             txtPassword.Location = new Point(33, 246);
             txtPassword.Name = "txtPassword";
             txtPassword.PasswordChar = '*';
-            txtPassword.Size = new Size(125, 27);
+            txtPassword.Size = new Size(164, 27);
             txtPassword.TabIndex = 4;
             // 
             // btnLogin

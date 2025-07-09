@@ -9,6 +9,7 @@ namespace SecureMessenger.Core.Models
         public string RecipientUsername { get; set; }
         public byte[] Ciphertext { get; set; }
         public byte[] Nonce { get; set; }
+        //created when encrypting the message
         public byte[] AuthTag { get; set; }
         public byte[] EncryptedMessageKeyForSender { get; set; }
         public byte[] EncryptedMessageKeyForRecipient { get; set; }

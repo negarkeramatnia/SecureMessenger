@@ -4,14 +4,16 @@ using System.Windows.Forms;
 
 namespace SecureMessenger.UI
 {
+    //it just holds the starting point of our app
     internal static class Program
     {
         [STAThread]
         static void Main()
         {
             Application.EnableVisualStyles();
+            //making it look better
             Application.SetCompatibleTextRenderingDefault(false);
-
+            //ONE single instance of your AuthService
             var authService = new AuthService(new CryptoService());
 
             while (true)
@@ -26,6 +28,7 @@ namespace SecureMessenger.UI
 
                             if (mainForm.DialogResult == DialogResult.Retry)
                             {
+                                //will show the login form again
                                 continue;
                             }
                         }
